@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chatbox</title>
+    <style>
+        #chatbox {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+        }
+
+        #user-input {
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Chatbox</h1>
+    <div id="chatbox"></div>
+    <input type="text" id="user-input" placeholder="Type your message">
+    <button id="send-button">Send</button>
+
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        sendButton.addEventListener('click', sendMessage);
+
+        function sendMessage() {
+            const message = userInput.value;
+            if (message.trim() === '') return;  // Don't send empty messages
+
+            // Display user message
+            appendMessage('User: ' + message);
+            userInput.value = ''; // Clear the input
+
+            // **Important:**  This HTML file is just a basic UI.
+            // It *cannot* directly run the Hugging Face model.
+            // You *must* have a backend server (e.g., Flask/FastAPI)
+            // running that handles communication with the model.
+
+            // For this example, we'll just display a placeholder
+            // bot response.  You'll need to replace this with
+            // code that sends the message to your backend server
+            // and displays the actual bot response.
+            setTimeout(() => {
+                appendMessage('Bot: (Placeholder) I am a simple Chatbot.  You need to connect me to a backend server!');
+            }, 500);
+        }
+
+        function appendMessage(message) {
+            const messageElement = document.createElement('p');
+            messageElement.textContent = message;
+            chatbox.appendChild(messageElement);
+            chatbox.scrollTop = chatbox.scrollHeight; // Scroll to bottom
+        }
+    </script>
+</body>
+</html>
