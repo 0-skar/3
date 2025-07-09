@@ -29,33 +29,42 @@
 
         sendButton.addEventListener('click', sendMessage);
 
-        function sendMessage() {
+        async function sendMessage() {
             const message = userInput.value;
-            if (message.trim() === '') return;  // Don't send empty messages
+            if (message.trim() === '') return;
 
-            // Display user message
             appendMessage('User: ' + message);
-            userInput.value = ''; // Clear the input
+            userInput.value = '';
 
-            // **Important:**  This HTML file is just a basic UI.
-            // It *cannot* directly run the Hugging Face model.
-            // You *must* have a backend server (e.g., Flask/FastAPI)
-            // running that handles communication with the model.
+            const backendUrl = 'https://Eosforus-chat.hf.space/chat'; // **REPLACE THIS WITH YOUR ACTUAL HUGGING FACE SPACE URL!**
 
-            // For this example, we'll just display a placeholder
-            // bot response.  You'll need to replace this with
-            // code that sends the message to your backend server
-            // and displays the actual bot response.
-            setTimeout(() => {
-                appendMessage('Bot: (Placeholder) I am a simple Chatbot.  You need to connect me to a backend server!');
-            }, 500);
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                appendMessage('Bot: ' + data.response);
+
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage('Error: Could not connect to the server.');
+            }
         }
 
         function appendMessage(message) {
             const messageElement = document.createElement('p');
             messageElement.textContent = message;
             chatbox.appendChild(messageElement);
-            chatbox.scrollTop = chatbox.scrollHeight; // Scroll to bottom
+            chatbox.scrollTop = chatbox.scrollHeight;
         }
     </script>
 </body>
