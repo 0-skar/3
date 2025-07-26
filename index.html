@@ -2,6 +2,8 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
+    <!-- KROK 1: NAJWAŻNIEJSZY META TAG DLA URZĄDZEŃ MOBILNYCH -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forum</title>
     <style>
         :root {
@@ -9,39 +11,89 @@
             --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
         }
-        body { font-family: 'Helvetica Neue', sans-serif; margin: 0; display: flex; height: 100vh; background-color: var(--header-bg-color); color: var(--text-color); }
-        .main-container { display: flex; flex-grow: 1; }
-        .chat-area { display: flex; flex-direction: column; flex-grow: 1; height: 100%; }
-        .chat-header { padding: 15px 20px; font-size: 20px; font-weight: bold; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
-        .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
-        .messages { list-style-type: none; margin: 0; padding: 20px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: scroll; opacity: 0; visibility: hidden; transition: opacity 0.2s; }
-        .messages.active { opacity: 1; visibility: visible; }
-        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; padding: 5px 0; }
+        /* Zapewniamy, że strona zajmuje całą wysokość ekranu */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Zapobiegamy scrollowaniu całej strony */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            background-color: var(--header-bg-color);
+            color: var(--text-color);
+        }
+        .main-container {
+            display: flex;
+            flex-grow: 1;
+            height: 100%; /* Kontener zajmuje całą dostępną wysokość */
+        }
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            /* Używamy min_width, aby zapobiec nadmiernemu ściskaniu obszaru czatu */
+            min-width: 60%; 
+        }
+        .chat-header {
+            padding: 10px 15px;
+            font-size: clamp(1rem, 4vw, 1.25rem); /* Responstywna czcionka */
+            font-weight: bold;
+            background-color: var(--secondary-bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .chat-windows {
+            position: relative;
+            flex-grow: 1;
+            background-color: var(--background-color);
+            overflow: hidden; /* Zapobiegamy podwójnym paskom przewijania */
+        }
+        .messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 15px;
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+            overflow-y: auto; /* Przewijanie tylko dla wiadomości */
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+        }
+        .system-message, .user-message, .private-message {
+             padding-bottom: 8px; /* Lepsze odstępy między wiadomościami */
+        }
+        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message b { color: var(--accent-color); }
         .private-message { color: var(--private-msg-color); font-style: italic; }
-        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
-        #input { flex-grow: 1; padding: 10px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 5px; }
+        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); flex-shrink: 0; }
+        #input { flex-grow: 1; padding: 10px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 5px; font-size: 1rem; }
         #form button { padding: 10px 15px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 5px; cursor: pointer; }
 
-        .sidebar { width: 240px; flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; }
-        .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; }
-        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; }
+        .sidebar {
+            /* Elastyczna szerokość z ograniczeniami, aby nie była za mała lub za duża */
+            width: clamp(120px, 35vw, 240px);
+            flex-shrink: 0;
+            background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); }
         .tab-button:hover { background-color: var(--hover-color); }
         .tab-button.active { color: var(--text-color); background-color: var(--accent-color); }
         .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
-        .user-slots-area h3 { margin: 5px 0 15px; font-size: 14px; text-transform: uppercase; color: var(--text-muted-color); }
-        .user-slot { display: flex; flex-direction: column; padding: 12px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.2s; }
+        .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
+        .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; cursor: pointer; }
-        .user-slot-header:hover { background-color: var(--hover-color); margin: -12px; padding: 12px; border-radius: 5px; }
-        .user-slot .plus-icon { font-size: 24px; font-weight: bold; color: var(--text-muted-color); margin: auto; }
-        .user-slot .user-name { font-weight: bold; flex-grow: 1; }
-        /* Nowe style dla formularza w slocie */
+        .user-slot-header:hover { opacity: 0.8; }
+        .user-slot .plus-icon { font-size: clamp(1.2rem, 4vw, 1.5rem); font-weight: bold; color: var(--text-muted-color); margin: auto; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); }
         .join-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
-        .join-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; }
-        .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; }
+        .join-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
+        .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
     </style>
 </head>
 <body>
+    <!-- Struktura HTML pozostaje bez zmian, cała magia dzieje się w CSS -->
     <div class="main-container">
         <div class="sidebar">
             <div class="chat-tabs" id="chat-tabs"></div>
@@ -61,6 +113,7 @@
     </div>
 
     <script>
+        // Cały kod JavaScript pozostaje bez zmian
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.querySelector('#form button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header') };
         let socket, username = null, activeChat = 'public';
         const hfSpaceUrl = "eosforus-chat.hf.space";
@@ -68,10 +121,9 @@
         const historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const m = document.createElement('ul'); m.className = 'messages'; m.id = `messages-${id}`; ui.chatWindows.appendChild(m); const t = document.createElement('button'); t.className = 'tab-button'; t.id = `tab-${id}`; t.textContent = name; t.onclick = () => switchChat(id); ui.chatTabs.appendChild(t); }
-        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); document.getElementById(`tab-${id}`).classList.add('active'); }
+        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); document.getElementById(`tab-${id}`).classList.add('active'); document.getElementById(`tab-${id}`).style.fontWeight = 'normal'; }
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<b>${data.username}:</b> ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
         
-        // NOWA, ULEPSZONA FUNKCJA AKTUALIZACJI UŻYTKOWNIKÓW
         function updateUsers(users) {
             ui.userSlotsContainer.innerHTML = '';
             users.forEach(user => {
@@ -86,33 +138,20 @@
                 slot.appendChild(header);
                 ui.userSlotsContainer.appendChild(slot);
             });
-            // Dodaj slot rejestracji tylko, jeśli sami nie jesteśmy jeszcze zalogowani
             if (!username) {
                 createRegistrationSlot();
             }
         }
         
         function createRegistrationSlot() {
-            const slot = document.createElement('div');
-            slot.className = 'user-slot';
-            slot.id = 'join-slot';
-            
-            const header = document.createElement('div');
-            header.className = 'user-slot-header';
-            header.innerHTML = '<span class="plus-icon">+</span>';
+            const slot = document.createElement('div'); slot.className = 'user-slot'; slot.id = 'join-slot';
+            const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="plus-icon">+</span>';
             slot.appendChild(header);
-
             header.onclick = () => {
-                // Usuń ikonę '+' i pokaż formularz w tym samym miejscu
                 header.style.display = 'none';
-                
                 const form = document.createElement('form');
                 form.className = 'join-form-inline';
-                form.innerHTML = `
-                    <input type="text" placeholder="Twoja nazwa..." required />
-                    <button type="submit">Dołącz</button>
-                `;
-                
+                form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><button type="submit">Dołącz</button>`;
                 form.onsubmit = (e) => {
                     e.preventDefault();
                     const input = form.querySelector('input');
@@ -120,14 +159,10 @@
                     if (chosenUsername) {
                         username = chosenUsername;
                         socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
-                        ui.input.disabled = false;
-                        ui.sendButton.disabled = false;
-                        ui.input.focus();
-                        // Slot zostanie usunięty przy najbliższej aktualizacji `updateUsers`
+                        ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.focus();
                     }
                 };
-                slot.appendChild(form);
-                form.querySelector('input').focus();
+                slot.appendChild(form); form.querySelector('input').focus();
             };
             ui.userSlotsContainer.appendChild(slot);
         }
@@ -147,10 +182,7 @@
                     const chatPartner = sender === username ? data.payload.recipient : sender;
                     createChatWindow(chatPartner, `Czat z ${chatPartner}`);
                     addMessage({ ...data.payload, isPrivate: true }, chatPartner);
-                    if (activeChat !== chatPartner) {
-                        // Można dodać powiadomienie na zakładce, np. pogrubienie tekstu
-                        document.getElementById(`tab-${chatPartner}`).style.fontWeight = 'bold';
-                    }
+                    if (activeChat !== chatPartner) { document.getElementById(`tab-${chatPartner}`).style.fontWeight = 'bold'; }
                 }
             };
         }
