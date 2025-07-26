@@ -153,21 +153,17 @@
             };
             ui.userSlotsContainer.appendChild(slot);
         }
-
-        // *** OSTATECZNA POPRAWKA FUNKCJI `updateUsers` ***
+        
         function updateUsers(users) {
-            // === KROK 1: Zapisz stan formularza PRZED jego usunięciem ===
             const activeElement = document.activeElement;
             const activeElementId = activeElement ? activeElement.id : null;
             const selectionStart = activeElement ? activeElement.selectionStart : 0;
             const selectionEnd = activeElement ? activeElement.selectionEnd : 0;
-            
             const usernameInput = document.getElementById('username-input');
             const passwordInput = document.getElementById('password-input');
             const savedUsername = usernameInput ? usernameInput.value : '';
             const savedPassword = passwordInput ? passwordInput.value : '';
 
-            // === KROK 2: Wyczyść i zbuduj listę na nowo ===
             ui.userSlotsContainer.innerHTML = '';
             
             users.sort((a, b) => {
@@ -210,16 +206,12 @@
                 ui.userSlotsContainer.appendChild(slot);
             });
             
-            // === KROK 3: Jeśli użytkownik nie jest zalogowany, odtwórz formularz i jego stan ===
             if (!username) {
                 createRegistrationSlot();
-                
                 const newUsernameInput = document.getElementById('username-input');
                 const newPasswordInput = document.getElementById('password-input');
                 if (newUsernameInput) newUsernameInput.value = savedUsername;
                 if (newPasswordInput) newPasswordInput.value = savedPassword;
-                
-                // Przywróć fokus i pozycję kursora do właściwego pola
                 if (activeElementId === 'username-input' && newUsernameInput) {
                     newUsernameInput.focus();
                     newUsernameInput.setSelectionRange(selectionStart, selectionEnd);
@@ -261,6 +253,8 @@
                         username = data.payload.username;
                         ui.input.disabled = false; ui.sendButton.disabled = false;
                         ui.input.placeholder = "Wpisz swoją wiadomość...";
+                        // *** POPRAWKA: Natychmiast usuń formularz logowania po sukcesie ***
+                        document.getElementById('join-slot')?.remove();
                         break;
                     case 'chat_message': addMessage(data.payload, 'public'); break;
                     case 'user_update': updateUsers(data.payload.users); break;
@@ -330,4 +324,4 @@
         connectWebSocket();
     </script>
 </body>
-</html>
+</html>```
