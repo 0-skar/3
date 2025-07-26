@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Forum Chat</title>
+    <title>Forum Czat</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
         #messages { list-style-type: none; margin: 0; padding: 0; width: 80%; max-width: 600px; height: 70vh; overflow-y: scroll; border: 1px solid #ddd; margin-bottom: 10px; padding: 10px; }
@@ -14,11 +14,11 @@
     </style>
 </head>
 <body>
-    <h1>Real-Time Forum Chat</h1>
+    <h1>Czat Forum w Czasie Rzeczywistym</h1>
     <ul id="messages"></ul>
     <form id="form" action="">
-        <input id="input" autocomplete="off" placeholder="Type your message..." />
-        <button>Send</button>
+        <input id="input" autocomplete="off" placeholder="Wpisz swoją wiadomość..." />
+        <button>Wyślij</button>
     </form>
 
     <script>
@@ -27,20 +27,30 @@
         const messages = document.getElementById('messages');
         let socket;
 
-        // Ask for username when the page loads
-        const username = prompt("Please enter your username:", "Guest");
+        // Zapytaj o nazwę użytkownika przy ładowaniu strony
+        const username = prompt("Proszę, podaj swoją nazwę użytkownika:", "Gość");
         if (!username) {
-            alert("Username is required to chat.");
-            document.body.innerHTML = "Please refresh and enter a username to chat.";
+            alert("Nazwa użytkownika jest wymagana, aby dołączyć do czatu.");
+            document.body.innerHTML = "Odśwież stronę i podaj nazwę użytkownika, aby kontynuować.";
         }
+        
+        // =================================================================================
+        // --- POCZĄTEK ZMIAN: TUTAJ PODAJESZ ADRES SWOJEGO BACKENDU ---
+        // =================================================================================
 
-        // --- IMPORTANT: Change this URL when you deploy! ---
-        // For local testing: 'ws://localhost:8000/ws/'
-        // For Render deployment: 'wss://your-service-name.onrender.com/ws/'
-        const wsUrl = `wss://your-service-name.onrender.com/ws/${username}`;
-        // const wsUrl = `ws://localhost:8000/ws/${username}`; // <-- Use this for local testing
+        // WAŻNE: Wklej tutaj skopiowany adres swojego Space'a z Hugging Face!
+        const hfSpaceUrl = "TWOJA-NAZWA-SPACJI.hf.space"; // <-- UZUPEŁNIJ TO POLE!
 
-        // Function to add a message to the chat window
+        // Automatyczne budowanie adresów URL dla WebSocket i historii czatu
+        const wsUrl = `wss://${hfSpaceUrl}/ws/${username}`;
+        const historyUrl = `https://${hfSpaceUrl}/history`;
+
+        // =================================================================================
+        // --- KONIEC ZMIAN ---
+        // =================================================================================
+
+
+        // Funkcja do dodawania wiadomości do okna czatu
         function addMessage(data) {
             const item = document.createElement('li');
             if (data.username === "System") {
@@ -51,23 +61,25 @@
                 item.innerHTML = `<b>${data.username}:</b> ${data.message}`;
             }
             messages.appendChild(item);
-            messages.scrollTop = messages.scrollHeight; // Auto-scroll
+            messages.scrollTop = messages.scrollHeight; // Automatyczne przewijanie
         }
         
-        // Function to fetch and display chat history
+        // Funkcja do pobierania i wyświetlania historii czatu
         async function loadHistory() {
-            // For Render deployment: 'https://your-service-name.onrender.com/history'
-            const historyUrl = 'https://your-service-name.onrender.com/history';
-            // const historyUrl = 'http://localhost:8000/history'; // <-- For local testing
             try {
                 const response = await fetch(historyUrl);
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
                 const history = await response.json();
                 history.forEach(addMessage);
             } catch (error) {
-                console.error("Could not load chat history:", error);
+                console.error("Nie udało się załadować historii czatu:", error);
+                addMessage({username: "System", message: "Nie udało się załadować historii czatu."});
             }
         }
 
+        // Funkcja do nawiązywania połączenia WebSocket
         function connectWebSocket() {
             if (!username) return;
 
@@ -79,22 +91,22 @@
             };
 
             socket.onopen = function(event) {
-                console.log("WebSocket connection established.");
-                // Load history after connection is open
+                console.log("Połączenie WebSocket nawiązane.");
+                // Załaduj historię dopiero po otwarciu połączenia
                 loadHistory();
             };
 
             socket.onclose = function(event) {
-                console.log("WebSocket connection closed. Attempting to reconnect...");
-                setTimeout(connectWebSocket, 3000); // Try to reconnect every 3 seconds
+                console.log("Połączenie WebSocket zamknięte. Próba ponownego połączenia...");
+                setTimeout(connectWebSocket, 3000); // Spróbuj połączyć się ponownie co 3 sekundy
             };
 
             socket.onerror = function(error) {
-                console.error("WebSocket error:", error);
+                console.error("Błąd WebSocket:", error);
             };
         }
 
-        // Handle form submission
+        // Obsługa wysyłania formularza
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             if (input.value && socket && socket.readyState === WebSocket.OPEN) {
@@ -103,7 +115,7 @@
             }
         });
 
-        // Initial connection
+        // Inicjalizacja połączenia
         connectWebSocket();
     </script>
 </body>
