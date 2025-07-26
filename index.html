@@ -12,7 +12,11 @@
             --notification-color: #28a745; --danger-color: #dc3545;
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
         }
-        @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
+        /* === NOWA ANIMACJA DLA POWIADOMIEŃ === */
+        @keyframes flash {
+            0%, 100% { background-color: var(--hover-color); }
+            50% { background-color: var(--notification-color); }
+        }
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
         .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
@@ -76,8 +80,44 @@
         let socket, username = null, activeChat = 'public', isModerator = false;
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
-        function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const m = document.createElement('ul'); m.className = 'messages'; m.id = `messages-${id}`; ui.chatWindows.appendChild(m); const t = document.createElement('button'); t.className = 'tab-button'; t.id = `tab-${id}`; t.textContent = name; t.onclick = () => { (activeChat === id && id !== 'public') ? switchChat('public') : switchChat(id); }; ui.chatTabs.appendChild(t); }
-        function switchChat(id) { activeChat = id; ui.headerTitle.textContent = (id === 'public') ? 'Forum' : `Czat z ${id}`; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } }
+        // === NOWA FUNKCJA: Inteligentne tworzenie zakładek ===
+        function createChatWindow(id, name) {
+            if (document.getElementById(`tab-${id}`)) return; // Zakładka już istnieje
+            const messagesDiv = document.createElement('ul');
+            messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`;
+            ui.chatWindows.appendChild(messagesDiv);
+            const tabButton = document.createElement('button');
+            tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`;
+            tabButton.textContent = name;
+            tabButton.onclick = () => {
+                // Jeśli klikamy aktywną zakładkę prywatną, wróć na czat publiczny. W przeciwnym razie przełącz.
+                if (activeChat === id && id !== 'public') {
+                    switchChat('public');
+                } else {
+                    switchChat(id);
+                }
+            };
+            ui.chatTabs.appendChild(tabButton);
+        }
+
+        // === ZMODYFIKOWANA FUNKCJA: Dynamiczny nagłówek i usuwanie powiadomień ===
+        function switchChat(id) {
+            activeChat = id;
+            if (id === 'public') {
+                ui.headerTitle.textContent = 'Forum';
+            } else {
+                ui.headerTitle.textContent = `Czat z ${id}`;
+            }
+            document.querySelectorAll('.messages').forEach(el => el.classList.remove('active'));
+            document.getElementById(`messages-${id}`).classList.add('active');
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            const tab = document.getElementById(`tab-${id}`);
+            if(tab) {
+                tab.classList.add('active');
+                tab.classList.remove('has-unread'); // Usuń powiadomienie po wejściu na czat
+            }
+        }
+
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<b>${data.username}:</b> ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
         
         function updateUsers(users) {
@@ -146,18 +186,26 @@
                 const data = JSON.parse(event.data);
                 if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
                 else if (data.type === 'user_update') { updateUsers(data.payload.users); }
-                else if (data.type === 'private_message') { const sender = data.payload.sender; const chatPartner = sender === username ? data.payload.recipient : sender; createChatWindow(chatPartner, `${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner); if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.classList.add('has-unread'); } }
+                else if (data.type === 'private_message') {
+                    const sender = data.payload.sender; const chatPartner = sender === username ? data.payload.recipient : sender;
+                    createChatWindow(chatPartner, `${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner);
+                    // === LOGIKA POWIADOMIEŃ ===
+                    if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
+                }
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; }
             };
-            socket.onclose = () => { setTimeout(connectWebSocket, 3000); };
+            socket.onclose = () => { setTimeout(connectWebSocket, 3000); }; // Próba ponownego połączenia
         }
         
+        // === NOWA FUNKCJA: Sprawdzanie i przywracanie sesji ===
         function checkStoredUser() {
             const storedUser = localStorage.getItem('forumUsername');
             if (storedUser) {
                 username = storedUser;
                 socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
-                ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość...";
+                ui.input.disabled = false;
+                ui.sendButton.disabled = false;
+                ui.input.placeholder = "Wpisz swoją wiadomość...";
             }
         }
 
