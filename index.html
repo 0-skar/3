@@ -1,111 +1,298 @@
-import asyncio
-import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Forum</title>
+    <style>
+        :root {
+            --background-color: #2c2f33;
+            --secondary-bg-color: #23272a;
+            --header-bg-color: #1e2124;
+            --text-color: #ffffff;
+            --text-muted-color: #99aab5;
+            --accent-color: #7289da;
+            --border-color: #444;
+            --hover-color: #3a3e42;
+        }
+        body {
+            font-family: 'Helvetica Neue', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--header-bg-color);
+            color: var(--text-color);
+        }
+        .main-container {
+            display: flex;
+            flex-grow: 1;
+        }
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: 100%;
+        }
+        .chat-header {
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            background-color: var(--secondary-bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .chat-windows {
+            position: relative;
+            flex-grow: 1;
+            background-color: var(--background-color);
+        }
+        .messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 20px;
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+            overflow-y: scroll;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+        }
+        .messages.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; padding: 5px 0; }
+        .user-message b { color: var(--accent-color); }
+        .private-message { color: #f0b90c; font-style: italic; }
+        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
+        #input { flex-grow: 1; padding: 10px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 5px; }
+        #form button { padding: 10px 15px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 5px; cursor: pointer; }
 
-app = FastAPI()
+        .sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-tabs { border-bottom: 1px solid var(--border-color); }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 15px; text-align: left; cursor: pointer; border-left: 3px solid transparent; }
+        .tab-button:hover { background-color: var(--hover-color); }
+        .tab-button.active { color: var(--text-color); border-left-color: var(--accent-color); }
+        #user-list h3 { padding: 15px; margin: 0; font-size: 14px; text-transform: uppercase; color: var(--text-muted-color); }
+        #user-list-container { flex-grow: 1; overflow-y: auto; }
+        #users button { display: block; width: 100%; background: none; border: none; color: var(--text-color); padding: 10px 15px; text-align: left; cursor: pointer; }
+        #users button:hover { background-color: var(--hover-color); }
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+        #join-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(5px); }
+        #join-modal { background-color: var(--background-color); padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        #join-modal h2 { margin-top: 0; }
+        #username-input { width: 100%; padding: 12px; margin: 15px 0; background: var(--secondary-bg-color); border: 1px solid var(--border-color); border-radius: 5px; color: white; }
+        #join-modal button { width: 100%; padding: 12px; background: var(--accent-color); border: none; border-radius: 5px; color: white; font-size: 16px; cursor: pointer; }
+        #plus-button { display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; font-size: 40px; background: var(--accent-color); color: white; border: none; border-radius: 50%; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="chat-tabs" id="chat-tabs">
+                <!-- Zakładki czatów pojawią się tutaj -->
+            </div>
+            <div id="user-list">
+                <h3>Aktywni Użytkownicy</h3>
+                <div id="user-list-container">
+                    <div id="users"></div>
+                </div>
+            </div>
+        </div>
+        <div class="chat-area">
+            <div class="chat-header" id="chat-header">Forum</div>
+            <div class="chat-windows" id="chat-windows">
+                <!-- Okna wiadomości pojawią się tutaj -->
+            </div>
+            <form id="form" action="">
+                <input id="input" autocomplete="off" placeholder="Wpisz swoją wiadomość..." disabled />
+                <button disabled>Wyślij</button>
+            </form>
+        </div>
+    </div>
 
-chat_history: List[Dict[str, str]] = []
+    <div id="join-overlay">
+        <div id="join-modal" style="display: none;">
+            <h2>Dołącz do Forum</h2>
+            <p>Wpisz swoją nazwę, aby zacząć rozmawiać.</p>
+            <form id="join-form">
+                <input id="username-input" autocomplete="off" placeholder="Twoja nazwa..." required>
+                <button type="submit">Dołącz</button>
+            </form>
+        </div>
+        <button id="plus-button" title="Dołącz do czatu">+</button>
+    </div>
 
-class ConnectionManager:
-    def __init__(self):
-        # Przechowujemy mapowanie w obie strony dla większej wydajności
-        self.ws_to_user: Dict[WebSocket, str] = {}
-        self.user_to_ws: Dict[str, WebSocket] = {}
+    <script>
+        // Elementy UI
+        const ui = {
+            form: document.getElementById('form'),
+            input: document.getElementById('input'),
+            sendButton: document.querySelector('#form button'),
+            chatWindows: document.getElementById('chat-windows'),
+            chatTabs: document.getElementById('chat-tabs'),
+            userList: document.getElementById('users'),
+            chatHeader: document.getElementById('chat-header'),
+            joinOverlay: document.getElementById('join-overlay'),
+            joinModal: document.getElementById('join-modal'),
+            joinForm: document.getElementById('join-form'),
+            usernameInput: document.getElementById('username-input'),
+            plusButton: document.getElementById('plus-button'),
+        };
 
-    def get_active_users(self) -> List[str]:
-        return list(self.user_to_ws.keys())
+        let socket;
+        let username = null;
+        let activeChat = 'public'; // 'public' or a username for a private chat
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        # Początkowo połączenie jest anonimowe
-        self.ws_to_user[websocket] = None
+        const hfSpaceUrl = "eosforus-chat.hf.space";
+        const wsUrl = `wss://${hfSpaceUrl}/ws/`;
+        const historyUrl = `https://${hfSpaceUrl}/history`;
 
-    def disconnect(self, websocket: WebSocket):
-        username = self.ws_to_user.pop(websocket, None)
-        if username and username in self.user_to_ws:
-            del self.user_to_ws[username]
+        function createChatWindow(id, name) {
+            // Tworzenie okna wiadomości
+            const messagesDiv = document.createElement('ul');
+            messagesDiv.className = 'messages';
+            messagesDiv.id = `messages-${id}`;
+            ui.chatWindows.appendChild(messagesDiv);
 
-    async def assign_username(self, websocket: WebSocket, username: str):
-        self.ws_to_user[websocket] = username
-        self.user_to_ws[username] = websocket
+            // Tworzenie zakładki
+            const tabButton = document.createElement('button');
+            tabButton.className = 'tab-button';
+            tabButton.id = `tab-${id}`;
+            tabButton.textContent = name;
+            tabButton.onclick = () => switchChat(id);
+            ui.chatTabs.appendChild(tabButton);
+        }
 
-    async def broadcast(self, message: str):
-        for websocket in self.ws_to_user:
-            await websocket.send_text(message)
-    
-    async def send_to_user(self, username: str, message: str):
-        websocket = self.user_to_ws.get(username)
-        if websocket:
-            await websocket.send_text(message)
+        function switchChat(id) {
+            activeChat = id;
+            // Zaktualizuj widoczność okien
+            document.querySelectorAll('.messages').forEach(el => el.classList.remove('active'));
+            document.getElementById(`messages-${id}`).classList.add('active');
+            // Zaktualizuj wygląd zakładek
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${id}`).classList.add('active');
+        }
 
-manager = ConnectionManager()
+        function addMessage(data, targetChat) {
+            const messagesDiv = document.getElementById(`messages-${targetChat}`);
+            if (!messagesDiv) return;
 
-def create_packet(type: str, payload: dict) -> str:
-    return json.dumps({"type": type, "payload": payload})
-
-@app.get("/history")
-async def get_history():
-    return JSONResponse(content=[msg for msg in chat_history if msg.get("username") != "System"])
-
-@app.websocket("/ws/")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    username = None
-    try:
-        while True:
-            data = await websocket.receive_text()
-            message = json.loads(data)
-            msg_type = message.get("type")
-
-            if msg_type == "join":
-                username = message["payload"]["username"]
-                await manager.assign_username(websocket, username)
-                
-                system_msg_payload = {"username": "System", "message": f"{username} dołączył(a) do czatu."}
-                await manager.broadcast(create_packet("chat_message", system_msg_payload))
-                
-                users_payload = {"users": manager.get_active_users()}
-                await manager.broadcast(create_packet("user_update", users_payload))
-
-            elif msg_type == "chat_message" and username:
-                chat_payload = {"username": username, "message": message["payload"]["message"]}
-                chat_history.append(chat_payload)
-                if len(chat_history) > 100: chat_history.pop(0)
-                
-                await manager.broadcast(create_packet("chat_message", chat_payload))
-
-            # NOWA LOGIKA: Obsługa wiadomości prywatnych
-            elif msg_type == "private_message" and username:
-                recipient = message["payload"]["recipient"]
-                private_msg_payload = {
-                    "sender": username,
-                    "recipient": recipient,
-                    "message": message["payload"]["message"]
+            const item = document.createElement('li');
+            if (data.username === "System") {
+                item.className = 'system-message';
+                item.textContent = data.message;
+            } else {
+                item.className = 'user-message';
+                item.innerHTML = `<b>${data.username}:</b> ${data.message}`;
+                if (data.isPrivate) {
+                    item.classList.add('private-message');
                 }
-                
-                # Wyślij wiadomość do odbiorcy i do nadawcy (aby obaj ją widzieli)
-                await manager.send_to_user(recipient, create_packet("private_message", private_msg_payload))
-                await manager.send_to_user(username, create_packet("private_message", private_msg_payload))
+            }
+            messagesDiv.appendChild(item);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
 
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-        if username:
-            system_msg_payload = {"username": "System", "message": f"{username} opuścił(a) czat."}
-            await manager.broadcast(create_packet("chat_message", system_msg_payload))
-            
-            users_payload = {"users": manager.get_active_users()}
-            await manager.broadcast(create_packet("user_update", users_payload))
-    except Exception as e:
-        print(f"Error: {e}")
-        manager.disconnect(websocket)
+        function updateUsers(users) {
+            ui.userList.innerHTML = '';
+            users.forEach(user => {
+                if (user === username) return; // Nie pokazuj siebie na liście
+                const button = document.createElement('button');
+                button.textContent = user;
+                button.onclick = () => openPrivateChat(user);
+                ui.userList.appendChild(button);
+            });
+        }
+        
+        function openPrivateChat(targetUser) {
+            if (!document.getElementById(`messages-${targetUser}`)) {
+                createChatWindow(targetUser, `Czat z ${targetUser}`);
+            }
+            switchChat(targetUser);
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch(historyUrl);
+                const history = await response.json();
+                history.forEach(msg => addMessage(msg, 'public'));
+            } catch (error) { console.error("Nie udało się załadować historii czatu:", error); }
+        }
+
+        function connectWebSocket() {
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log("Połączenie nawiązane (obserwator).");
+                loadHistory();
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'chat_message') {
+                    addMessage(data.payload, 'public');
+                } else if (data.type === 'user_update') {
+                    updateUsers(data.payload.users);
+                } else if (data.type === 'private_message') {
+                    const sender = data.payload.sender;
+                    // Odbiorca widzi czat z nadawcą, nadawca widzi czat z odbiorcą
+                    const target = sender === username ? data.payload.recipient : sender;
+                    if (!document.getElementById(`messages-${target}`)) {
+                        createChatWindow(target, `Czat z ${target}`);
+                    }
+                    addMessage({ ...data.payload, isPrivate: true }, target);
+                }
+            };
+
+            socket.onclose = () => {
+                addMessage({ username: "System", message: "Rozłączono z serwerem." }, 'public');
+            };
+        }
+
+        ui.plusButton.addEventListener('click', () => {
+            ui.plusButton.style.display = 'none';
+            ui.joinModal.style.display = 'block';
+            ui.usernameInput.focus();
+        });
+
+        ui.joinForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const chosenUsername = ui.usernameInput.value.trim();
+            if (chosenUsername) {
+                username = chosenUsername;
+                socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
+                ui.joinOverlay.style.display = 'none';
+                ui.input.disabled = false;
+                ui.sendButton.disabled = false;
+                ui.input.focus();
+            }
+        });
+
+        ui.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = ui.input.value.trim();
+            if (message && username && socket.readyState === WebSocket.OPEN) {
+                let type, payload;
+                if (activeChat === 'public') {
+                    type = 'chat_message';
+                    payload = { message: message };
+                } else {
+                    type = 'private_message';
+                    payload = { recipient: activeChat, message: message };
+                }
+                socket.send(JSON.stringify({ type, payload }));
+                ui.input.value = '';
+            }
+        });
+
+        // Inicjalizacja
+        createChatWindow('public', 'Czat Publiczny');
+        switchChat('public');
+        connectWebSocket();
+    </script>
+</body>
+</html>
