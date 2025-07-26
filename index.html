@@ -9,8 +9,14 @@
             --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
             --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
+            --notification-color: #28a745;
             --sidebar-width: clamp(200px, 30vw, 240px);
             --transition-speed: 0.3s;
+        }
+        /* === NOWA ANIMACJA DLA POWIADOMIEŃ === */
+        @keyframes flash {
+            0%, 100% { background-color: var(--hover-color); }
+            50% { background-color: var(--notification-color); }
         }
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
@@ -28,15 +34,17 @@
         
         .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; height: 100%; position: fixed; right: 0; top: 0; border-left: 1px solid var(--border-color); transition: transform var(--transition-speed); }
         .main-container { margin-right: var(--sidebar-width); }
-        .sidebar.collapsed { transform: translateX(100%); }
+        .sidebar.collapsed { transform: translateX(calc(100% + 1px)); }
         .sidebar.collapsed + .main-container { margin-right: 0; }
         
         #sidebar-toggle { position: absolute; top: 10px; left: -40px; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px 0 0 5px; cursor: pointer; z-index: 10; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         
         .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
-        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; }
         .tab-button:hover { background-color: var(--hover-color); }
         .tab-button.active { color: var(--text-color); background-color: var(--accent-color); }
+        .tab-button.has-unread { animation: flash 1.5s infinite; } /* Użycie animacji */
+        
         .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
@@ -73,8 +81,44 @@
         let socket, username = null, activeChat = 'public';
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
-        function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const m = document.createElement('ul'); m.className = 'messages'; m.id = `messages-${id}`; ui.chatWindows.appendChild(m); const t = document.createElement('button'); t.className = 'tab-button'; t.id = `tab-${id}`; t.textContent = name; t.onclick = () => switchChat(id); ui.chatTabs.appendChild(t); }
-        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.style.fontWeight = 'normal'; } }
+        // === NOWA FUNKCJA: Inteligentne tworzenie zakładek ===
+        function createChatWindow(id, name) {
+            if (document.getElementById(`tab-${id}`)) return; // Zakładka już istnieje
+            const messagesDiv = document.createElement('ul');
+            messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`;
+            ui.chatWindows.appendChild(messagesDiv);
+            const tabButton = document.createElement('button');
+            tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`;
+            tabButton.textContent = name;
+            tabButton.onclick = () => {
+                // Jeśli klikamy aktywną zakładkę prywatną, wróć na czat publiczny. W przeciwnym razie przełącz.
+                if (activeChat === id && id !== 'public') {
+                    switchChat('public');
+                } else {
+                    switchChat(id);
+                }
+            };
+            ui.chatTabs.appendChild(tabButton);
+        }
+
+        // === ZMODYFIKOWANA FUNKCJA: Dynamiczny nagłówek i usuwanie powiadomień ===
+        function switchChat(id) {
+            activeChat = id;
+            if (id === 'public') {
+                ui.chatHeader.textContent = 'Forum';
+            } else {
+                ui.chatHeader.textContent = `Czat z ${id}`;
+            }
+            document.querySelectorAll('.messages').forEach(el => el.classList.remove('active'));
+            document.getElementById(`messages-${id}`).classList.add('active');
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+            const tab = document.getElementById(`tab-${id}`);
+            if(tab) {
+                tab.classList.add('active');
+                tab.classList.remove('has-unread'); // Usuń powiadomienie po wejściu na czat
+            }
+        }
+
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<b>${data.username}:</b> ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
         
         function updateUsers(users) {
@@ -83,12 +127,9 @@
                 const slot = document.createElement('div'); slot.className = 'user-slot';
                 const header = document.createElement('div'); header.className = 'user-slot-header';
                 let headerHTML = `<span class="user-name">${user}</span>`;
-                if (user === username) {
-                    headerHTML += `<button class="leave-button" title="Opuść forum">×</button>`;
-                }
-                header.innerHTML = headerHTML;
-                if (user !== username) { header.onclick = () => openPrivateChat(user); } 
-                else { header.querySelector('.leave-button').onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetUI(); }; }
+                if (user === username) { header.innerHTML = `<span class="user-name">${user} (Ty)</span><button class="leave-button" title="Opuść forum">×</button>`; }
+                else { header.innerHTML = headerHTML; header.onclick = () => openPrivateChat(user); }
+                if (user === username) { header.querySelector('.leave-button').onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); localStorage.removeItem('forumUsername'); resetUI(); }; }
                 slot.appendChild(header);
                 ui.userSlotsContainer.appendChild(slot);
             });
@@ -103,34 +144,49 @@
                 header.style.display = 'none';
                 const form = document.createElement('form'); form.className = 'join-form-inline';
                 form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><button type="submit">Dołącz</button>`;
-                form.onsubmit = (e) => { e.preventDefault(); const input = form.querySelector('input'); const chosenUsername = input.value.trim(); if (chosenUsername) { socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername } })); username = chosenUsername; ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.focus(); } };
+                form.onsubmit = (e) => { e.preventDefault(); const input = form.querySelector('input'); const chosenUsername = input.value.trim(); if (chosenUsername) { socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername } })); } };
                 slot.appendChild(form); form.querySelector('input').focus();
             };
             ui.userSlotsContainer.appendChild(slot);
         }
 
         function resetUI() { username = null; ui.input.disabled = true; ui.sendButton.disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; updateUsers([]); }
-        function openPrivateChat(targetUser) { createChatWindow(targetUser, `Czat z ${targetUser}`); switchChat(targetUser); }
+        function openPrivateChat(targetUser) { createChatWindow(targetUser, `${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
-            socket.onopen = () => { loadHistory(); };
+            socket.onopen = () => { checkStoredUser(); loadHistory(); };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
                 else if (data.type === 'user_update') { updateUsers(data.payload.users); }
                 else if (data.type === 'private_message') {
                     const sender = data.payload.sender; const chatPartner = sender === username ? data.payload.recipient : sender;
-                    createChatWindow(chatPartner, `Czat z ${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner);
-                    if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.style.fontWeight = 'bold'; }
+                    createChatWindow(chatPartner, `${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner);
+                    // === LOGIKA POWIADOMIEŃ ===
+                    if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
                 }
             };
+            socket.onclose = () => { setTimeout(connectWebSocket, 3000); }; // Próba ponownego połączenia
+        }
+        
+        // === NOWA FUNKCJA: Sprawdzanie i przywracanie sesji ===
+        function checkStoredUser() {
+            const storedUser = localStorage.getItem('forumUsername');
+            if (storedUser) {
+                username = storedUser;
+                socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
+                ui.input.disabled = false;
+                ui.sendButton.disabled = false;
+                ui.input.placeholder = "Wpisz swoją wiadomość...";
+            }
         }
 
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !username) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); if (type === 'private_message') addMessage({ username, message, isPrivate: true }, activeChat); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
 
+        // Inicjalizacja
         createChatWindow('public', 'Czat Publiczny'); switchChat('public'); connectWebSocket();
     </script>
 </body>
