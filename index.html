@@ -2,80 +2,37 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <!-- KROK 1: NAJWAŻNIEJSZY META TAG DLA URZĄDZEŃ MOBILNYCH -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Forum</title>
     <style>
         :root {
             --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
             --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
+            --sidebar-width: clamp(200px, 30vw, 240px);
+            --transition-speed: 0.3s;
         }
-        /* Zapewniamy, że strona zajmuje całą wysokość ekranu */
-        html, body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden; /* Zapobiegamy scrollowaniu całej strony */
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            background-color: var(--header-bg-color);
-            color: var(--text-color);
-        }
-        .main-container {
-            display: flex;
-            flex-grow: 1;
-            height: 100%; /* Kontener zajmuje całą dostępną wysokość */
-        }
-        .chat-area {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            /* Używamy min_width, aby zapobiec nadmiernemu ściskaniu obszaru czatu */
-            min-width: 60%; 
-        }
-        .chat-header {
-            padding: 10px 15px;
-            font-size: clamp(1rem, 4vw, 1.25rem); /* Responstywna czcionka */
-            font-weight: bold;
-            background-color: var(--secondary-bg-color);
-            border-bottom: 1px solid var(--border-color);
-        }
-        .chat-windows {
-            position: relative;
-            flex-grow: 1;
-            background-color: var(--background-color);
-            overflow: hidden; /* Zapobiegamy podwójnym paskom przewijania */
-        }
-        .messages {
-            list-style-type: none;
-            margin: 0;
-            padding: 15px;
-            position: absolute;
-            top: 0; bottom: 0; left: 0; right: 0;
-            overflow-y: auto; /* Przewijanie tylko dla wiadomości */
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
-        }
-        .system-message, .user-message, .private-message {
-             padding-bottom: 8px; /* Lepsze odstępy między wiadomościami */
-        }
+        html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
+        .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
+        .chat-header { display: flex; align-items: center; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+        .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
+        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
+        .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message b { color: var(--accent-color); }
         .private-message { color: var(--private-msg-color); font-style: italic; }
-        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); flex-shrink: 0; }
-        #input { flex-grow: 1; padding: 10px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 5px; font-size: 1rem; }
-        #form button { padding: 10px 15px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 5px; cursor: pointer; }
-
-        .sidebar {
-            /* Elastyczna szerokość z ograniczeniami, aby nie była za mała lub za duża */
-            width: clamp(120px, 35vw, 240px);
-            flex-shrink: 0;
-            background-color: var(--secondary-bg-color);
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+        #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
+        #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
+        
+        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; height: 100%; position: fixed; right: 0; top: 0; border-left: 1px solid var(--border-color); transition: transform var(--transition-speed); }
+        .main-container { margin-right: var(--sidebar-width); }
+        .sidebar.collapsed { transform: translateX(100%); }
+        .sidebar.collapsed + .main-container { margin-right: 0; }
+        
+        #sidebar-toggle { position: absolute; top: 10px; left: -40px; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px 0 0 5px; cursor: pointer; z-index: 10; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        
         .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); }
         .tab-button:hover { background-color: var(--hover-color); }
@@ -84,124 +41,97 @@
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; cursor: pointer; }
-        .user-slot-header:hover { opacity: 0.8; }
-        .user-slot .plus-icon { font-size: clamp(1.2rem, 4vw, 1.5rem); font-weight: bold; color: var(--text-muted-color); margin: auto; }
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); }
+        .leave-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 10px; padding: 0 5px; }
+        .leave-button:hover { color: #ff4d4d; }
         .join-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
         .join-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <!-- Struktura HTML pozostaje bez zmian, cała magia dzieje się w CSS -->
-    <div class="main-container">
-        <div class="sidebar">
-            <div class="chat-tabs" id="chat-tabs"></div>
-            <div class="user-slots-area">
-                <h3>Użytkownicy</h3>
-                <div id="user-slots-container"></div>
-            </div>
+    <div class="sidebar" id="sidebar">
+        <button id="sidebar-toggle"><</button>
+        <div class="chat-tabs" id="chat-tabs"></div>
+        <div class="user-slots-area">
+            <h3>Użytkownicy</h3>
+            <div id="user-slots-container"></div>
         </div>
+    </div>
+    <div class="main-container" id="main-container">
         <div class="chat-area">
             <div class="chat-header" id="chat-header">Forum</div>
             <div class="chat-windows" id="chat-windows"></div>
             <form id="form" action="">
                 <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
-                <button disabled>Wyślij</button>
+                <button type="submit" disabled>Wyślij</button>
             </form>
         </div>
     </div>
-
     <script>
-        // Cały kod JavaScript pozostaje bez zmian
-        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.querySelector('#form button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header') };
+        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle') };
         let socket, username = null, activeChat = 'public';
-        const hfSpaceUrl = "eosforus-chat.hf.space";
-        const wsUrl = `wss://${hfSpaceUrl}/ws/`;
-        const historyUrl = `https://${hfSpaceUrl}/history`;
+        const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const m = document.createElement('ul'); m.className = 'messages'; m.id = `messages-${id}`; ui.chatWindows.appendChild(m); const t = document.createElement('button'); t.className = 'tab-button'; t.id = `tab-${id}`; t.textContent = name; t.onclick = () => switchChat(id); ui.chatTabs.appendChild(t); }
-        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); document.getElementById(`tab-${id}`).classList.add('active'); document.getElementById(`tab-${id}`).style.fontWeight = 'normal'; }
+        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); document.getElementById(`messages-${id}`).classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.style.fontWeight = 'normal'; } }
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<b>${data.username}:</b> ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
         
         function updateUsers(users) {
             ui.userSlotsContainer.innerHTML = '';
             users.forEach(user => {
-                const slot = document.createElement('div');
-                slot.className = 'user-slot';
-                const header = document.createElement('div');
-                header.className = 'user-slot-header';
-                header.innerHTML = `<span class="user-name">${user === username ? user + ' (Ty)' : user}</span>`;
-                if (user !== username) {
-                    header.onclick = () => openPrivateChat(user);
+                const slot = document.createElement('div'); slot.className = 'user-slot';
+                const header = document.createElement('div'); header.className = 'user-slot-header';
+                let headerHTML = `<span class="user-name">${user}</span>`;
+                if (user === username) {
+                    headerHTML += `<button class="leave-button" title="Opuść forum">×</button>`;
                 }
+                header.innerHTML = headerHTML;
+                if (user !== username) { header.onclick = () => openPrivateChat(user); } 
+                else { header.querySelector('.leave-button').onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetUI(); }; }
                 slot.appendChild(header);
                 ui.userSlotsContainer.appendChild(slot);
             });
-            if (!username) {
-                createRegistrationSlot();
-            }
+            if (!username) { createRegistrationSlot(); }
         }
         
         function createRegistrationSlot() {
             const slot = document.createElement('div'); slot.className = 'user-slot'; slot.id = 'join-slot';
-            const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="plus-icon">+</span>';
+            const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
             slot.appendChild(header);
             header.onclick = () => {
                 header.style.display = 'none';
-                const form = document.createElement('form');
-                form.className = 'join-form-inline';
+                const form = document.createElement('form'); form.className = 'join-form-inline';
                 form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><button type="submit">Dołącz</button>`;
-                form.onsubmit = (e) => {
-                    e.preventDefault();
-                    const input = form.querySelector('input');
-                    const chosenUsername = input.value.trim();
-                    if (chosenUsername) {
-                        username = chosenUsername;
-                        socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
-                        ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.focus();
-                    }
-                };
+                form.onsubmit = (e) => { e.preventDefault(); const input = form.querySelector('input'); const chosenUsername = input.value.trim(); if (chosenUsername) { socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername } })); username = chosenUsername; ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.focus(); } };
                 slot.appendChild(form); form.querySelector('input').focus();
             };
             ui.userSlotsContainer.appendChild(slot);
         }
 
+        function resetUI() { username = null; ui.input.disabled = true; ui.sendButton.disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; updateUsers([]); }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Czat z ${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
-            socket.onopen = () => { console.log("Połączenie nawiązane."); loadHistory(); };
+            socket.onopen = () => { loadHistory(); };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
                 else if (data.type === 'user_update') { updateUsers(data.payload.users); }
                 else if (data.type === 'private_message') {
-                    const sender = data.payload.sender;
-                    const chatPartner = sender === username ? data.payload.recipient : sender;
-                    createChatWindow(chatPartner, `Czat z ${chatPartner}`);
-                    addMessage({ ...data.payload, isPrivate: true }, chatPartner);
-                    if (activeChat !== chatPartner) { document.getElementById(`tab-${chatPartner}`).style.fontWeight = 'bold'; }
+                    const sender = data.payload.sender; const chatPartner = sender === username ? data.payload.recipient : sender;
+                    createChatWindow(chatPartner, `Czat z ${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner);
+                    if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.style.fontWeight = 'bold'; }
                 }
             };
         }
 
-        ui.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = ui.input.value.trim();
-            if (!message || !username) return;
-            const type = activeChat === 'public' ? 'chat_message' : 'private_message';
-            const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
-            socket.send(JSON.stringify({ type, payload }));
-            if (type === 'private_message') addMessage({ username, message, isPrivate: true }, activeChat);
-            ui.input.value = '';
-        });
+        ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !username) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); if (type === 'private_message') addMessage({ username, message, isPrivate: true }, activeChat); ui.input.value = ''; });
+        ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
 
-        // Inicjalizacja
-        createChatWindow('public', 'Czat Publiczny');
-        switchChat('public');
-        connectWebSocket();
+        createChatWindow('public', 'Czat Publiczny'); switchChat('public'); connectWebSocket();
     </script>
 </body>
 </html>
