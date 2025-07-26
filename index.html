@@ -88,8 +88,12 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, username = null, activeChat = 'public', isModerator = false;
-        const wsUrl = `ws://${window.location.host}/ws/`;
-        const historyUrl = `http://${window.location.host}/history`;
+        // Używa hosta strony do tworzenia URL, co działa zarówno lokalnie jak i na serwerze
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const httpProtocol = window.location.protocol;
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/`;
+        const historyUrl = `${httpProtocol}//${window.location.host}/history`;
+
 
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
@@ -149,8 +153,47 @@
             mDiv.scrollTop = mDiv.scrollHeight;
         }
 
+        function createRegistrationSlot() {
+            // Ta funkcja teraz tylko tworzy HTML formularza
+            const slot = document.createElement('div');
+            slot.className = 'user-slot';
+            slot.id = 'join-slot';
+            slot.innerHTML = `
+                <form class="join-form-inline" id="login-form">
+                    <input type="text" id="username-input" placeholder="Twoja nazwa..." required />
+                    <input type="password" id="password-input" placeholder="Hasło (puste = gość)" />
+                    <button type="submit">Zaloguj / Zarejestruj</button>
+                </form>
+            `;
+            
+            slot.querySelector('form').onsubmit = (e) => {
+                e.preventDefault();
+                const chosenUsername = document.getElementById('username-input').value.trim();
+                const password = document.getElementById('password-input').value;
+                if (!chosenUsername) return;
+
+                if (password) {
+                    socket.send(JSON.stringify({ type: 'register', payload: { username: chosenUsername, password } }));
+                    localStorage.setItem('forumCredentials', JSON.stringify({ username: chosenUsername, password }));
+                } else {
+                    localStorage.removeItem('forumCredentials');
+                    socket.send(JSON.stringify({ type: 'join_guest', payload: { username: chosenUsername } }));
+                }
+            };
+            ui.userSlotsContainer.appendChild(slot);
+            document.getElementById('username-input').focus();
+        }
+
+        // *** ZMODYFIKOWANA I POPRAWIONA FUNKCJA `updateUsers` ***
         function updateUsers(users) {
-            ui.userSlotsContainer.innerHTML = ''; // To jest przyczyna problemu
+            // === POCZĄTEK POPRAWKI: Zapisz wartości z formularza przed jego usunięciem ===
+            const usernameInput = document.getElementById('username-input');
+            const passwordInput = document.getElementById('password-input');
+            const savedUsername = usernameInput ? usernameInput.value : '';
+            const savedPassword = passwordInput ? passwordInput.value : '';
+            // === KONIEC POPRAWKI ===
+
+            ui.userSlotsContainer.innerHTML = ''; // Czyścimy całą listę
             
             users.sort((a, b) => {
                 if (a.role === 'moderator' && b.role !== 'moderator') return -1;
@@ -200,124 +243,16 @@
             });
             
             if (!username) {
-                createRegistrationSlot(); // Ta linia w połączeniu z czyszczeniem HTML powoduje błąd
+                createRegistrationSlot(); // Tworzymy formularz od nowa
+                // === POCZĄTEK POPRAWKI: Przywróć zapisane wartości do nowego formularza ===
+                const newUsernameInput = document.getElementById('username-input');
+                const newPasswordInput = document.getElementById('password-input');
+                if (newUsernameInput) newUsernameInput.value = savedUsername;
+                if (newPasswordInput) newPasswordInput.value = savedPassword;
+                // === KONIEC POPRAWKI ===
             }
-        }
-
-        function createRegistrationSlot() {
-            // *** TO JEST POPRAWKA ***
-            // Jeśli formularz już istnieje, nie rób nic, aby nie kasować wpisywanego tekstu.
-            if (document.getElementById('join-slot')) return;
-
-            const slot = document.createElement('div');
-            slot.className = 'user-slot';
-            slot.id = 'join-slot';
-            slot.innerHTML = `
-                <form class="join-form-inline" id="login-form">
-                    <input type="text" id="username-input" placeholder="Twoja nazwa..." required />
-                    <input type="password" id="password-input" placeholder="Hasło (puste = gość)" />
-                    <button type="submit">Zaloguj / Zarejestruj</button>
-                </form>
-            `;
-            
-            slot.querySelector('form').onsubmit = (e) => {
-                e.preventDefault();
-                const chosenUsername = document.getElementById('username-input').value.trim();
-                const password = document.getElementById('password-input').value;
-                if (!chosenUsername) return;
-
-                if (password) {
-                    socket.send(JSON.stringify({ type: 'register', payload: { username: chosenUsername, password } }));
-                    localStorage.setItem('forumCredentials', JSON.stringify({ username: chosenUsername, password }));
-                } else {
-                    localStorage.removeItem('forumCredentials');
-                    socket.send(JSON.stringify({ type: 'join_guest', payload: { username: chosenUsername } }));
-                }
-            };
-            ui.userSlotsContainer.appendChild(slot);
-            document.getElementById('username-input').focus();
         }
         
-        // Zmodyfikowana funkcja updateUsers, aby była mniej destrukcyjna
-        function smarterUpdateUsers(users) {
-            const onlineUsernames = new Set(users.map(u => u.username));
-            
-            // Sprawdź, czy obecny użytkownik jest moderatorem
-            const currentUserData = users.find(u => u.username === username);
-            isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
-            ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
-
-            // Usuń sloty użytkowników, którzy są offline
-            document.querySelectorAll('.user-slot:not(#join-slot)').forEach(slot => {
-                if (!onlineUsernames.has(slot.dataset.username)) {
-                    slot.remove();
-                }
-            });
-
-            // Dodaj lub zaktualizuj sloty dla użytkowników online
-            users.sort((a, b) => {
-                if (a.role === 'moderator' && b.role !== 'moderator') return -1;
-                if (a.role !== 'moderator' && b.role === 'moderator') return 1;
-                return a.username.localeCompare(b.username);
-            });
-            
-            users.forEach(user => {
-                let slot = document.querySelector(`.user-slot[data-username="${user.username}"]`);
-                if (!slot) {
-                    slot = document.createElement('div');
-                    slot.className = 'user-slot';
-                    slot.dataset.username = user.username;
-                    ui.userSlotsContainer.appendChild(slot);
-                }
-
-                // Renderuj zawartość slotu
-                const header = slot.querySelector('.user-slot-header') || document.createElement('div');
-                header.className = 'user-slot-header';
-
-                let nameHTML = `<span class="user-name ${user.role === 'moderator' ? 'moderator' : ''}">${user.username}</span>`;
-                let actionsHTML = '';
-
-                if (user.username === username) {
-                    nameHTML += ' (Ty)';
-                    if (user.role !== 'moderator' && !user.username.includes('(Gość)')) {
-                        actionsHTML += `<button class="action-button promote-button" title="Zostań moderatorem">🔑</button>`;
-                    }
-                    actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
-                } else if (isModerator) {
-                    actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
-                }
-                
-                header.innerHTML = `${nameHTML} ${actionsHTML}`;
-                
-                 if (user.username !== username) {
-                    const nameSpan = header.querySelector('.user-name');
-                    if (nameSpan) nameSpan.onclick = () => openPrivateChat(user.username);
-                }
-
-                // Przypisz event listenery
-                const promoteBtn = header.querySelector('.promote-button');
-                if (promoteBtn) { promoteBtn.onclick = () => { const password = prompt("Wpisz hasło moderatora (2017):"); if (password) socket.send(JSON.stringify({ type: 'promote', payload: { password } })); }; }
-                
-                const leaveBtn = header.querySelector('.leave-button');
-                if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); localStorage.removeItem('forumCredentials'); resetUI(); }; }
-
-                const removeBtn = header.querySelector('.remove-user-button');
-                if (removeBtn) { removeBtn.onclick = (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
-
-                if (!slot.contains(header)) {
-                    slot.appendChild(header);
-                }
-            });
-
-            if (!username) {
-                createRegistrationSlot();
-            } else {
-                 const joinSlot = document.getElementById('join-slot');
-                 if(joinSlot) joinSlot.remove();
-            }
-        }
-
-
         function resetUI() {
             username = null;
             isModerator = false;
@@ -330,12 +265,13 @@
             document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove());
             
             switchChat('public');
-            smarterUpdateUsers([]);
+            updateUsers([]);
         }
 
         async function loadHistory() {
             try {
                 const response = await fetch(historyUrl);
+                if (!response.ok) return;
                 const history = await response.json();
                 const publicChat = document.getElementById('messages-public');
                 if (publicChat) publicChat.innerHTML = '';
@@ -359,17 +295,16 @@
                 switch (data.type) {
                     case 'login_success':
                         username = data.payload.username;
-                        document.getElementById('join-slot')?.remove();
                         ui.input.disabled = false;
                         ui.sendButton.disabled = false;
                         ui.input.placeholder = "Wpisz swoją wiadomość...";
-                        // Serwer zaraz wyśle 'user_update', który zaktualizuje rolę i UI
+                        // Serwer zaraz wyśle 'user_update', który zaktualizuje UI
                         break;
                     case 'chat_message':
                         addMessage(data.payload, 'public');
                         break;
                     case 'user_update':
-                        smarterUpdateUsers(data.payload.users);
+                        updateUsers(data.payload.users);
                         break;
                     case 'private_message':
                         const sender = data.payload.sender;
@@ -390,7 +325,6 @@
                         if (data.payload.message.includes("hasło") || data.payload.message.includes("nazwa")){
                            localStorage.removeItem('forumCredentials');
                         }
-                        // Jeśli błąd dotyczy logowania, reset może być potrzebny
                         if (!username) resetUI();
                         break;
                 }
@@ -416,7 +350,7 @@
                     socket.send(JSON.stringify({ type: 'login', payload: { username, password } }));
                 }
             } else {
-                smarterUpdateUsers([]);
+                updateUsers([]); // Jeśli nie ma danych, pokaż formularz logowania
             }
         }
 
