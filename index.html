@@ -108,20 +108,74 @@
 
         async function openPrivateChat(targetUser) { const chatId = targetUser; if (!document.getElementById(`messages-${chatId}`)) { createChatWindow(chatId, `Czat z ${targetUser}`); try { const response = await fetch(`${privateHistoryUrlBase}/${targetUser}/${username}`); if (response.ok) { const privateHistory = await response.json(); privateHistory.forEach(msg => addMessage({ username: msg.sender, message: msg.message, isPrivate: true }, chatId)); } } catch (e) {} } switchChat(chatId); }
 
-        function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.form.querySelector('button').disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; document.querySelectorAll('.tab-button:not(#tab-public)').forEach(tab => tab.remove()); document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove()); switchChat('public'); updateUsers([]); }
+        function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.form.querySelector('button').disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; document.querySelectorAll('.tab-button:not(#tab-public)').forEach(tab => tab.remove()); document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove()); switchChat('public'); ui.loginModal.style.display = "none"; updateUsers([]); }
         async function loadHistory() { try { const r = await fetch(historyUrl); if (!r.ok) return; const h = await r.json(); const p = document.getElementById('messages-public'); if(p) p.innerHTML=''; h.forEach(m => addMessage(m, 'public')); } catch (e) {} }
-        function handleLoginSuccess(payload) { username = payload.username; isModerator = payload.role === 'moderator'; ui.loginModal.style.display = 'none'; ui.input.disabled = false; ui.form.querySelector('button').disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość..."; }
         
-        function connectWebSocket() { socket = new WebSocket(wsUrl); socket.onopen = () => { checkStoredUser(); loadHistory(); }; socket.onmessage = (event) => { const data = JSON.parse(event.data); switch (data.type) { case 'login_success': handleLoginSuccess(data.payload); break; case 'role_update': isModerator = data.payload.role === 'moderator'; break; case 'chat_message': addMessage(data.payload, 'public'); break; case 'user_update': updateUsers(data.payload.users); break; case 'private_message': const p = data.payload.sender === username ? data.payload.recipient : data.payload.sender; createChatWindow(p, p); addMessage({ ...data.payload, isPrivate: true }, p); if (activeChat !== p) { const t = document.getElementById(`tab-${p}`); if (t) t.classList.add('has-unread'); } break; case 'history_cleared': const pub = document.getElementById('messages-public'); if (pub) pub.innerHTML = ''; break; case 'force_logout': alert(data.payload.message); socket.onclose = null; socket.close(); localStorage.removeItem('forumCredentials'); sessionStorage.removeItem('forumGuestName'); resetUI(); break; case 'error': alert(`Błąd: ${data.payload.message}`); localStorage.removeItem('forumCredentials'); break; } }; socket.onclose = () => { resetUI(); setTimeout(connectWebSocket, 3000); }; socket.onerror = (err) => { if(socket.readyState === WebSocket.OPEN) socket.close(); }; }
+        // === POPRAWIONA FUNKCJA OBSŁUGI LOGOWANIA ===
+        function handleLoginSuccess(payload) {
+            username = payload.username;
+            isModerator = payload.role === 'moderator';
+            ui.loginModal.style.display = 'none';
+            ui.input.disabled = false;
+            ui.form.querySelector('button').disabled = false;
+            ui.input.placeholder = "Wpisz swoją wiadomość...";
+            ui.input.focus();
+            // Po udanym zalogowaniu, przycisk dołączania jest usuwany przez `updateUsers`,
+            // ponieważ `username` nie jest już `null`.
+        }
+        
+        function connectWebSocket() {
+            socket = new WebSocket(wsUrl);
+            socket.onopen = () => { checkStoredUser(); loadHistory(); };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                switch (data.type) {
+                    case 'login_success': handleLoginSuccess(data.payload); break;
+                    case 'role_update': isModerator = data.payload.role === 'moderator'; break;
+                    case 'chat_message': addMessage(data.payload, 'public'); break;
+                    case 'user_update': updateUsers(data.payload.users); break;
+                    case 'private_message':
+                        const p = data.payload.sender === username ? data.payload.recipient : data.payload.sender;
+                        createChatWindow(p, p); addMessage({ ...data.payload, isPrivate: true }, p);
+                        if (activeChat !== p) { const t = document.getElementById(`tab-${p}`); if (t) t.classList.add('has-unread'); }
+                        break;
+                    case 'history_cleared': const pub = document.getElementById('messages-public'); if (pub) pub.innerHTML = ''; break;
+                    case 'force_logout':
+                        alert(data.payload.message);
+                        socket.onclose = null;
+                        socket.close();
+                        localStorage.removeItem('forumCredentials');
+                        sessionStorage.removeItem('forumGuestName');
+                        resetUI();
+                        break;
+                    case 'error':
+                        alert(`Błąd: ${data.payload.message}`);
+                        localStorage.removeItem('forumCredentials'); // Czyść dane logowania po błędzie
+                        sessionStorage.removeItem('forumGuestName');
+                        break;
+                }
+            };
+            socket.onclose = () => { resetUI(); setTimeout(connectWebSocket, 3000); };
+            socket.onerror = (err) => { if (socket.readyState === WebSocket.OPEN) socket.close(); };
+        }
+        
+        // === POPRAWIONA FUNKCJA SPRAWDZANIA SESJI ===
         function checkStoredUser() {
             const guestName = sessionStorage.getItem('forumGuestName');
             const credentials = localStorage.getItem('forumCredentials');
+            
+            // Czekaj, aż połączenie będzie w pełni otwarte
+            if (socket.readyState !== WebSocket.OPEN) {
+                setTimeout(checkStoredUser, 100); // Spróbuj ponownie za chwilę
+                return;
+            }
+
             if (guestName) {
                 socket.send(JSON.stringify({ type: 'join_guest', payload: { username: guestName } }));
             } else if (credentials) {
                 const { username, password } = JSON.parse(credentials);
                 if (username && password) socket.send(JSON.stringify({ type: 'register_or_login', payload: { username, password } }));
-            } else { updateUsers([]); }
+            }
         }
         
         document.getElementById('guest-form').onsubmit = e => { e.preventDefault(); const u = document.getElementById('guest-username').value.trim(); if (u) { sessionStorage.setItem('forumGuestName', u); socket.send(JSON.stringify({ type: 'join_guest', payload: { username: u } })); } };
