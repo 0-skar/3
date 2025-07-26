@@ -44,8 +44,6 @@
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; transition: opacity 0.3s; }
         .user-slot.offline .user-name { opacity: 0.5; }
         .user-name.moderator::before { content: '👑 '; color: var(--private-msg-color); }
-        .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
-        .action-button:hover { color: #ff4d4d; } .promote-button:hover { color: var(--private-msg-color); }
         #join-button { width: 100%; padding: 12px; background-color: var(--accent-color); border-radius: 5px; border: none; color: white; cursor: pointer; font-weight: bold; }
         #login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100; pointer-events: none; }
         #login-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--background-color); padding: 25px; border-radius: 8px; width: clamp(280px, 80vw, 400px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); pointer-events: all; display: none; }
@@ -73,12 +71,7 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn'), loginOverlay: document.getElementById('login-overlay'), loginModal: document.getElementById('login-modal'), loginHeader: document.getElementById('login-header'), closeLoginModal: document.getElementById('close-login-modal') };
         let socket, username = null, activeChat = 'public', isModerator = false;
-        
-        // === POPRAWKA: Jawne podanie adresu serwera ===
-        const hfSpaceUrl = "eosforus-chat.hf.space";
-        const wsUrl = `wss://${hfSpaceUrl}/ws/`;
-        const historyUrl = `https://${hfSpaceUrl}/history`;
-        const privateHistoryUrlBase = `https://${hfSpaceUrl}/private_history`;
+        const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`; const privateHistoryUrlBase = `https://${hfSpaceUrl}/private_history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const m = document.createElement('ul'); m.className = 'messages'; m.id = `messages-${id}`; ui.chatWindows.appendChild(m); const t = document.createElement('button'); t.className = 'tab-button'; t.id = `tab-${id}`; t.textContent = name; if (id !== 'public' && id !== 'self-profile') t.classList.add('private-tab'); t.onclick = () => { (activeChat === id && id !== 'public') ? switchChat('public') : switchChat(id); }; ui.chatTabs.appendChild(t); }
         function switchChat(id) { activeChat = id; ui.headerTitle.textContent = (id === 'public') ? 'Forum' : (id === 'self-profile' ? 'Mój Profil' : `Czat z ${id}`); document.querySelectorAll('.messages').forEach(el => el.classList.remove('active')); const win = document.getElementById(`messages-${id}`); if (win) win.classList.add('active'); document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } }
@@ -108,35 +101,31 @@
             const id = 'self-profile'; createChatWindow(id, 'Mój Profil');
             const profileWindow = document.getElementById(`messages-${id}`);
             profileWindow.innerHTML = `<div class="profile-actions"><p>Zarządzaj swoim kontem</p><button id="logout-btn">Wyloguj</button><button id="delete-account-btn">Usuń Konto</button></div>`;
-            document.getElementById('logout-btn').onclick = () => { if (socket.readyState === WebSocket.OPEN) socket.close(); localStorage.removeItem('forumCredentials'); resetUI(); };
+            document.getElementById('logout-btn').onclick = () => { if (socket.readyState === WebSocket.OPEN) socket.close(); localStorage.removeItem('forumCredentials'); sessionStorage.removeItem('forumGuestName'); resetUI(); };
             document.getElementById('delete-account-btn').onclick = () => { const conf = prompt("WPISZ '" + username + "', aby trwale usunąć konto i historię rozmów."); if (conf === username) socket.send(JSON.stringify({ type: 'delete_account' })); else if (conf !== null) alert("Anulowano."); };
             switchChat(id);
         }
 
-        async function openPrivateChat(targetUser) {
-            const chatId = targetUser;
-            if (!document.getElementById(`messages-${chatId}`)) {
-                createChatWindow(chatId, `Czat z ${targetUser}`);
-                try {
-                    const response = await fetch(`${privateHistoryUrlBase}/${targetUser}/${username}`);
-                    if (response.ok) {
-                        const privateHistory = await response.json();
-                        privateHistory.forEach(msg => addMessage({ username: msg.sender, message: msg.message, isPrivate: true }, chatId));
-                    }
-                } catch (e) {}
-            }
-            switchChat(chatId);
-        }
+        async function openPrivateChat(targetUser) { const chatId = targetUser; if (!document.getElementById(`messages-${chatId}`)) { createChatWindow(chatId, `Czat z ${targetUser}`); try { const response = await fetch(`${privateHistoryUrlBase}/${targetUser}/${username}`); if (response.ok) { const privateHistory = await response.json(); privateHistory.forEach(msg => addMessage({ username: msg.sender, message: msg.message, isPrivate: true }, chatId)); } } catch (e) {} } switchChat(chatId); }
 
-        function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.form.querySelector('button').disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; document.querySelectorAll('.tab-button:not(#tab-public)').forEach(tab => tab.remove()); document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove()); switchChat('public'); ui.loginModal.style.display = "none"; updateUsers([]); }
+        function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.form.querySelector('button').disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; document.querySelectorAll('.tab-button:not(#tab-public)').forEach(tab => tab.remove()); document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove()); switchChat('public'); updateUsers([]); }
         async function loadHistory() { try { const r = await fetch(historyUrl); if (!r.ok) return; const h = await r.json(); const p = document.getElementById('messages-public'); if(p) p.innerHTML=''; h.forEach(m => addMessage(m, 'public')); } catch (e) {} }
         function handleLoginSuccess(payload) { username = payload.username; isModerator = payload.role === 'moderator'; ui.loginModal.style.display = 'none'; ui.input.disabled = false; ui.form.querySelector('button').disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość..."; }
         
-        function connectWebSocket() { socket = new WebSocket(wsUrl); socket.onopen = () => { checkStoredUser(); loadHistory(); }; socket.onmessage = (event) => { const data = JSON.parse(event.data); switch (data.type) { case 'login_success': handleLoginSuccess(data.payload); break; case 'role_update': isModerator = data.payload.role === 'moderator'; break; case 'chat_message': addMessage(data.payload, 'public'); break; case 'user_update': updateUsers(data.payload.users); break; case 'private_message': const p = data.payload.sender === username ? data.payload.recipient : data.payload.sender; createChatWindow(p, p); addMessage({ ...data.payload, isPrivate: true }, p); if (activeChat !== p) { const t = document.getElementById(`tab-${p}`); if (t) t.classList.add('has-unread'); } break; case 'history_cleared': const pub = document.getElementById('messages-public'); if (pub) pub.innerHTML = ''; break; case 'force_logout': alert(data.payload.message); socket.onclose = null; socket.close(); localStorage.removeItem('forumCredentials'); resetUI(); break; case 'error': alert(`Błąd: ${data.payload.message}`); localStorage.removeItem('forumCredentials'); break; } }; socket.onclose = () => { resetUI(); setTimeout(connectWebSocket, 3000); }; socket.onerror = (err) => { if(socket.readyState === WebSocket.OPEN) socket.close(); }; }
-        function checkStoredUser() { const c = localStorage.getItem('forumCredentials'); if (c) { const { username, password } = JSON.parse(c); if (username && password) socket.send(JSON.stringify({ type: 'register_or_login', payload: { username, password } })); } else { updateUsers([]); } }
+        function connectWebSocket() { socket = new WebSocket(wsUrl); socket.onopen = () => { checkStoredUser(); loadHistory(); }; socket.onmessage = (event) => { const data = JSON.parse(event.data); switch (data.type) { case 'login_success': handleLoginSuccess(data.payload); break; case 'role_update': isModerator = data.payload.role === 'moderator'; break; case 'chat_message': addMessage(data.payload, 'public'); break; case 'user_update': updateUsers(data.payload.users); break; case 'private_message': const p = data.payload.sender === username ? data.payload.recipient : data.payload.sender; createChatWindow(p, p); addMessage({ ...data.payload, isPrivate: true }, p); if (activeChat !== p) { const t = document.getElementById(`tab-${p}`); if (t) t.classList.add('has-unread'); } break; case 'history_cleared': const pub = document.getElementById('messages-public'); if (pub) pub.innerHTML = ''; break; case 'force_logout': alert(data.payload.message); socket.onclose = null; socket.close(); localStorage.removeItem('forumCredentials'); sessionStorage.removeItem('forumGuestName'); resetUI(); break; case 'error': alert(`Błąd: ${data.payload.message}`); localStorage.removeItem('forumCredentials'); break; } }; socket.onclose = () => { resetUI(); setTimeout(connectWebSocket, 3000); }; socket.onerror = (err) => { if(socket.readyState === WebSocket.OPEN) socket.close(); }; }
+        function checkStoredUser() {
+            const guestName = sessionStorage.getItem('forumGuestName');
+            const credentials = localStorage.getItem('forumCredentials');
+            if (guestName) {
+                socket.send(JSON.stringify({ type: 'join_guest', payload: { username: guestName } }));
+            } else if (credentials) {
+                const { username, password } = JSON.parse(credentials);
+                if (username && password) socket.send(JSON.stringify({ type: 'register_or_login', payload: { username, password } }));
+            } else { updateUsers([]); }
+        }
         
-        document.getElementById('guest-form').onsubmit = e => { e.preventDefault(); const u = document.getElementById('guest-username').value.trim(); if (u) socket.send(JSON.stringify({ type: 'join_guest', payload: { username: u } })); };
-        document.getElementById('login-form').onsubmit = e => { e.preventDefault(); const u = document.getElementById('login-username').value.trim(); const p = document.getElementById('login-password').value; if (u && p) { socket.send(JSON.stringify({ type: 'register_or_login', payload: { username: u, password: p } })); localStorage.setItem('forumCredentials', JSON.stringify({ username: u, password: p })); }};
+        document.getElementById('guest-form').onsubmit = e => { e.preventDefault(); const u = document.getElementById('guest-username').value.trim(); if (u) { sessionStorage.setItem('forumGuestName', u); socket.send(JSON.stringify({ type: 'join_guest', payload: { username: u } })); } };
+        document.getElementById('login-form').onsubmit = e => { e.preventDefault(); const u = document.getElementById('login-username').value.trim(); const p = document.getElementById('login-password').value; if (u && p) { localStorage.setItem('forumCredentials', JSON.stringify({ username: u, password: p })); socket.send(JSON.stringify({ type: 'register_or_login', payload: { username: u, password: p } })); }};
         document.querySelectorAll('.login-tab').forEach(tab => tab.onclick = () => { document.querySelectorAll('.login-tab, .login-content').forEach(el => el.classList.remove('active')); tab.classList.add('active'); document.getElementById(`${tab.dataset.tab}-content`).classList.add('active'); });
         ui.closeLoginModal.onclick = () => ui.loginModal.style.display = 'none';
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
