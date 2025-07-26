@@ -4,51 +4,154 @@
     <meta charset="UTF-8">
     <title>Forum Czat</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        #messages { list-style-type: none; margin: 0; padding: 0; width: 80%; max-width: 600px; height: 70vh; overflow-y: scroll; border: 1px solid #ddd; margin-bottom: 10px; padding: 10px; }
-        .system-message { color: grey; font-style: italic; }
-        .user-message b { color: #007bff; }
-        #form { display: flex; width: 80%; max-width: 622px; }
-        #input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; }
-        button { padding: 10px; }
+        :root {
+            --background-color: #2c2f33;
+            --secondary-bg-color: #23272a;
+            --text-color: #ffffff;
+            --text-muted-color: #99aab5;
+            --accent-color: #7289da;
+            --border-color: #444;
+        }
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--secondary-bg-color);
+            color: var(--text-color);
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: 100%;
+        }
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: scroll;
+            background-color: var(--background-color);
+        }
+        .system-message {
+            color: var(--text-muted-color);
+            font-style: italic;
+            text-align: center;
+            padding: 5px 0;
+        }
+        .user-message b {
+            color: var(--accent-color);
+        }
+        #form {
+            display: flex;
+            padding: 10px;
+            background-color: var(--secondary-bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+        #input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            background-color: #40444b;
+            color: var(--text-color);
+            border-radius: 5px;
+        }
+        #form button {
+            padding: 10px 15px;
+            margin-left: 10px;
+            border: none;
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #user-list {
+            width: 240px;
+            flex-shrink: 0;
+            background-color: var(--secondary-bg-color);
+            border-left: 1px solid var(--border-color);
+            padding: 10px;
+            overflow-y: auto;
+        }
+        #user-list h3 {
+            margin-top: 0;
+            color: var(--text-muted-color);
+            text-align: center;
+        }
+        #user-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #user-list li {
+            padding: 5px;
+            color: var(--text-color);
+        }
+        #join-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #join-button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Czat Forum w Czasie Rzeczywistym</h1>
-    <ul id="messages"></ul>
-    <form id="form" action="">
-        <input id="input" autocomplete="off" placeholder="Wpisz swoją wiadomość..." />
-        <button>Wyślij</button>
-    </form>
+
+    <div class="chat-container">
+        <ul id="messages">
+            <!-- Wiadomości czatu pojawią się tutaj -->
+        </ul>
+        <form id="form" action="">
+            <input id="input" autocomplete="off" placeholder="Wpisz swoją wiadomość..." disabled />
+            <button disabled>Wyślij</button>
+        </form>
+    </div>
+
+    <div id="user-list">
+        <h3>Aktywni Użytkownicy</h3>
+        <ul id="users">
+            <!-- Lista użytkowników pojawi się tutaj -->
+        </ul>
+    </div>
+
+    <div id="join-overlay">
+        <button id="join-button" title="Dołącz do czatu">+</button>
+    </div>
 
     <script>
+        // Elementy UI
         const form = document.getElementById('form');
         const input = document.getElementById('input');
+        const sendButton = form.querySelector('button');
         const messages = document.getElementById('messages');
-        let socket;
-
-        // Zapytaj o nazwę użytkownika przy ładowaniu strony
-        const username = prompt("Proszę, podaj swoją nazwę użytkownika:", "Gość");
-        if (!username) {
-            alert("Nazwa użytkownika jest wymagana, aby dołączyć do czatu.");
-            document.body.innerHTML = "Odśwież stronę i podaj nazwę użytkownika, aby kontynuować.";
-        }
+        const userList = document.getElementById('users');
+        const joinOverlay = document.getElementById('join-overlay');
+        const joinButton = document.getElementById('join-button');
         
-        // =================================================================================
-        // --- POCZĄTEK ZMIAN: TUTAJ PODAJESZ ADRES SWOJEGO BACKENDU ---
-        // =================================================================================
+        let socket;
+        let username = null;
 
-        // WAŻNE: Wklej tutaj skopiowany adres swojego Space'a z Hugging Face!
-        const hfSpaceUrl = "eosforus-chat.hf.space"; // <-- UZUPEŁNIJ TO POLE!
-
-        // Automatyczne budowanie adresów URL dla WebSocket i historii czatu
-        const wsUrl = `wss://${hfSpaceUrl}/ws/${username}`;
+        // Adres URL Twojego backendu na Hugging Face
+        const hfSpaceUrl = "eosforus-chat.hf.space"; // <-- Upewnij się, że to poprawny adres!
+        const wsUrl = `wss://${hfSpaceUrl}/ws/`; // Zwróć uwagę na usunięcie {username} z adresu!
         const historyUrl = `https://${hfSpaceUrl}/history`;
-
-        // =================================================================================
-        // --- KONIEC ZMIAN ---
-        // =================================================================================
-
 
         // Funkcja do dodawania wiadomości do okna czatu
         function addMessage(data) {
@@ -61,44 +164,53 @@
                 item.innerHTML = `<b>${data.username}:</b> ${data.message}`;
             }
             messages.appendChild(item);
-            messages.scrollTop = messages.scrollHeight; // Automatyczne przewijanie
+            messages.scrollTop = messages.scrollHeight;
         }
-        
-        // Funkcja do pobierania i wyświetlania historii czatu
+
+        // Funkcja do aktualizacji listy użytkowników
+        function updateUsers(users) {
+            userList.innerHTML = ''; // Wyczyść starą listę
+            users.forEach(user => {
+                const item = document.createElement('li');
+                item.textContent = user;
+                userList.appendChild(item);
+            });
+        }
+
+        // Funkcja do pobierania historii czatu
         async function loadHistory() {
             try {
                 const response = await fetch(historyUrl);
-                if (!response.ok) {
-                    throw new Error(`Błąd HTTP: ${response.status}`);
-                }
                 const history = await response.json();
                 history.forEach(addMessage);
             } catch (error) {
                 console.error("Nie udało się załadować historii czatu:", error);
-                addMessage({username: "System", message: "Nie udało się załadować historii czatu."});
             }
         }
 
-        // Funkcja do nawiązywania połączenia WebSocket
+        // Funkcja do łączenia z WebSocket
         function connectWebSocket() {
-            if (!username) return;
-
             socket = new WebSocket(wsUrl);
+
+            socket.onopen = function() {
+                console.log("Połączenie WebSocket nawiązane (tryb obserwatora).");
+                loadHistory(); // Załaduj historię od razu
+            };
 
             socket.onmessage = function(event) {
                 const data = JSON.parse(event.data);
-                addMessage(data);
+                
+                // Nowy backend będzie wysyłał różne typy wiadomości
+                if (data.type === 'chat_message') {
+                    addMessage(data.payload);
+                } else if (data.type === 'user_update') {
+                    updateUsers(data.payload.users);
+                }
             };
 
-            socket.onopen = function(event) {
-                console.log("Połączenie WebSocket nawiązane.");
-                // Załaduj historię dopiero po otwarciu połączenia
-                loadHistory();
-            };
-
-            socket.onclose = function(event) {
-                console.log("Połączenie WebSocket zamknięte. Próba ponownego połączenia...");
-                setTimeout(connectWebSocket, 3000); // Spróbuj połączyć się ponownie co 3 sekundy
+            socket.onclose = function() {
+                console.log("Połączenie WebSocket zamknięte. Spróbuj odświeżyć stronę.");
+                addMessage({username: "System", message: "Rozłączono z serwerem. Odśwież stronę."});
             };
 
             socket.onerror = function(error) {
@@ -106,16 +218,33 @@
             };
         }
 
+        // Obsługa dołączania do czatu
+        joinButton.addEventListener('click', () => {
+            const chosenUsername = prompt("Proszę, podaj swoją nazwę użytkownika:", "Gość");
+            if (chosenUsername) {
+                username = chosenUsername;
+                // Wyślij wiadomość do serwera, aby "promować" swoje połączenie
+                socket.send(JSON.stringify({ type: 'join', payload: { username: username } }));
+                
+                // Odblokuj interfejs
+                joinOverlay.style.display = 'none';
+                input.disabled = false;
+                sendButton.disabled = false;
+                input.focus();
+            }
+        });
+
         // Obsługa wysyłania formularza
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            if (input.value && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(input.value);
+            if (input.value && username && socket.readyState === WebSocket.OPEN) {
+                // Wyślij wiadomość czatu
+                socket.send(JSON.stringify({ type: 'chat_message', payload: { message: input.value } }));
                 input.value = '';
             }
         });
 
-        // Inicjalizacja połączenia
+        // Rozpocznij w trybie obserwatora
         connectWebSocket();
     </script>
 </body>
