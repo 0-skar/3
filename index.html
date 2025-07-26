@@ -21,15 +21,12 @@
         .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
         .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
         
-        /* ZMIANA: Złoty napis "Forum" */
-        #header-title {
-            color: #FFD700;
-        }
+        #header-title { color: #FFD700; }
         
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
-        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
-        .messages.active { z-index: 1; /* Upewnij się, że aktywny czat jest na wierzchu */ }
+        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); opacity: 0; transition: opacity 0.2s; z-index: 0; }
+        .messages.active { opacity: 1; z-index: 1; }
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message b { color: var(--accent-color); }
@@ -47,23 +44,20 @@
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        /* ZMIANA: Biały tekst na prywatnych zakładkach */
         .tab-button.private-tab { color: #ffffff; }
         .tab-button.private-tab.active { background-color: #5865f2; }
 
         .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
-        .user-slot-header { display: flex; align-items: center; width: 100%; cursor: pointer; }
-        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); }
+        .user-slot-header { display: flex; align-items: center; width: 100%; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; }
         
-        /* ZMIANA: Korona dla moderatora przez CSS */
         .user-name.moderator::before { content: '👑 '; }
 
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; } .promote-button:hover { color: var(--private-msg-color); }
         
-        /* ZMIANA: Nowy wygląd formularza dołączania */
         .join-form-inline { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .join-form-inline input { padding: 8px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
@@ -94,12 +88,11 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, username = null, activeChat = 'public', isModerator = false;
-        // Zmień URL na adres swojego serwera, jeśli nie uruchamiasz go lokalnie
-        const wsUrl = `ws://localhost:8000/ws/`;
-        const historyUrl = `http://localhost:8000/history`;
+        const wsUrl = `ws://${window.location.host}/ws/`;
+        const historyUrl = `http://${window.location.host}/history`;
 
         function createChatWindow(id, name) {
-            if (document.getElementById(`tab-${id}`)) return;
+            if (document.getElementById(`messages-${id}`)) return;
             const messagesDiv = document.createElement('ul');
             messagesDiv.className = 'messages';
             messagesDiv.id = `messages-${id}`;
@@ -127,10 +120,10 @@
         function switchChat(id) {
             activeChat = id;
             ui.headerTitle.textContent = (id === 'public') ? 'Forum' : `Czat z ${id}`;
-
-            document.querySelectorAll('.messages').forEach(el => el.style.zIndex = '0');
+            
+            document.querySelectorAll('.messages').forEach(el => el.classList.remove('active'));
             const activeWindow = document.getElementById(`messages-${id}`);
-            if (activeWindow) activeWindow.style.zIndex = '1';
+            if (activeWindow) activeWindow.classList.add('active');
 
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = document.getElementById(`tab-${id}`);
@@ -157,6 +150,8 @@
         }
 
         function updateUsers(users) {
+            ui.userSlotsContainer.innerHTML = ''; // To jest przyczyna problemu
+            
             users.sort((a, b) => {
                 if (a.role === 'moderator' && b.role !== 'moderator') return -1;
                 if (a.role !== 'moderator' && b.role === 'moderator') return 1;
@@ -167,7 +162,6 @@
             isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
 
-            ui.userSlotsContainer.innerHTML = '';
             users.forEach(user => {
                 const slot = document.createElement('div');
                 slot.className = 'user-slot';
@@ -206,12 +200,15 @@
             });
             
             if (!username) {
-                createRegistrationSlot();
+                createRegistrationSlot(); // Ta linia w połączeniu z czyszczeniem HTML powoduje błąd
             }
         }
 
         function createRegistrationSlot() {
+            // *** TO JEST POPRAWKA ***
+            // Jeśli formularz już istnieje, nie rób nic, aby nie kasować wpisywanego tekstu.
             if (document.getElementById('join-slot')) return;
+
             const slot = document.createElement('div');
             slot.className = 'user-slot';
             slot.id = 'join-slot';
@@ -230,12 +227,9 @@
                 if (!chosenUsername) return;
 
                 if (password) {
-                    // Najpierw spróbuj zalogować, serwer obsłuży resztę (rejestrację)
                     socket.send(JSON.stringify({ type: 'register', payload: { username: chosenUsername, password } }));
-                    // Zapisz dane, aby spróbować zalogować się automatycznie następnym razem
                     localStorage.setItem('forumCredentials', JSON.stringify({ username: chosenUsername, password }));
                 } else {
-                    // Dołącz jako gość
                     localStorage.removeItem('forumCredentials');
                     socket.send(JSON.stringify({ type: 'join_guest', payload: { username: chosenUsername } }));
                 }
@@ -243,6 +237,86 @@
             ui.userSlotsContainer.appendChild(slot);
             document.getElementById('username-input').focus();
         }
+        
+        // Zmodyfikowana funkcja updateUsers, aby była mniej destrukcyjna
+        function smarterUpdateUsers(users) {
+            const onlineUsernames = new Set(users.map(u => u.username));
+            
+            // Sprawdź, czy obecny użytkownik jest moderatorem
+            const currentUserData = users.find(u => u.username === username);
+            isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
+            ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
+
+            // Usuń sloty użytkowników, którzy są offline
+            document.querySelectorAll('.user-slot:not(#join-slot)').forEach(slot => {
+                if (!onlineUsernames.has(slot.dataset.username)) {
+                    slot.remove();
+                }
+            });
+
+            // Dodaj lub zaktualizuj sloty dla użytkowników online
+            users.sort((a, b) => {
+                if (a.role === 'moderator' && b.role !== 'moderator') return -1;
+                if (a.role !== 'moderator' && b.role === 'moderator') return 1;
+                return a.username.localeCompare(b.username);
+            });
+            
+            users.forEach(user => {
+                let slot = document.querySelector(`.user-slot[data-username="${user.username}"]`);
+                if (!slot) {
+                    slot = document.createElement('div');
+                    slot.className = 'user-slot';
+                    slot.dataset.username = user.username;
+                    ui.userSlotsContainer.appendChild(slot);
+                }
+
+                // Renderuj zawartość slotu
+                const header = slot.querySelector('.user-slot-header') || document.createElement('div');
+                header.className = 'user-slot-header';
+
+                let nameHTML = `<span class="user-name ${user.role === 'moderator' ? 'moderator' : ''}">${user.username}</span>`;
+                let actionsHTML = '';
+
+                if (user.username === username) {
+                    nameHTML += ' (Ty)';
+                    if (user.role !== 'moderator' && !user.username.includes('(Gość)')) {
+                        actionsHTML += `<button class="action-button promote-button" title="Zostań moderatorem">🔑</button>`;
+                    }
+                    actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
+                } else if (isModerator) {
+                    actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
+                }
+                
+                header.innerHTML = `${nameHTML} ${actionsHTML}`;
+                
+                 if (user.username !== username) {
+                    const nameSpan = header.querySelector('.user-name');
+                    if (nameSpan) nameSpan.onclick = () => openPrivateChat(user.username);
+                }
+
+                // Przypisz event listenery
+                const promoteBtn = header.querySelector('.promote-button');
+                if (promoteBtn) { promoteBtn.onclick = () => { const password = prompt("Wpisz hasło moderatora (2017):"); if (password) socket.send(JSON.stringify({ type: 'promote', payload: { password } })); }; }
+                
+                const leaveBtn = header.querySelector('.leave-button');
+                if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); localStorage.removeItem('forumCredentials'); resetUI(); }; }
+
+                const removeBtn = header.querySelector('.remove-user-button');
+                if (removeBtn) { removeBtn.onclick = (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
+
+                if (!slot.contains(header)) {
+                    slot.appendChild(header);
+                }
+            });
+
+            if (!username) {
+                createRegistrationSlot();
+            } else {
+                 const joinSlot = document.getElementById('join-slot');
+                 if(joinSlot) joinSlot.remove();
+            }
+        }
+
 
         function resetUI() {
             username = null;
@@ -256,13 +330,15 @@
             document.querySelectorAll('.messages:not(#messages-public)').forEach(win => win.remove());
             
             switchChat('public');
-            updateUsers([]);
+            smarterUpdateUsers([]);
         }
 
         async function loadHistory() {
             try {
                 const response = await fetch(historyUrl);
                 const history = await response.json();
+                const publicChat = document.getElementById('messages-public');
+                if (publicChat) publicChat.innerHTML = '';
                 history.forEach(msg => addMessage(msg, 'public'));
             } catch (e) {
                 console.error("Nie udało się załadować historii:", e);
@@ -283,17 +359,17 @@
                 switch (data.type) {
                     case 'login_success':
                         username = data.payload.username;
-                        isModerator = data.payload.role === 'moderator';
+                        document.getElementById('join-slot')?.remove();
                         ui.input.disabled = false;
                         ui.sendButton.disabled = false;
                         ui.input.placeholder = "Wpisz swoją wiadomość...";
-                        document.getElementById('join-slot')?.remove();
+                        // Serwer zaraz wyśle 'user_update', który zaktualizuje rolę i UI
                         break;
                     case 'chat_message':
                         addMessage(data.payload, 'public');
                         break;
                     case 'user_update':
-                        updateUsers(data.payload.users);
+                        smarterUpdateUsers(data.payload.users);
                         break;
                     case 'private_message':
                         const sender = data.payload.sender;
@@ -311,8 +387,11 @@
                         break;
                     case 'error':
                         alert(`Błąd: ${data.payload.message}`);
-                        localStorage.removeItem('forumCredentials');
-                        resetUI();
+                        if (data.payload.message.includes("hasło") || data.payload.message.includes("nazwa")){
+                           localStorage.removeItem('forumCredentials');
+                        }
+                        // Jeśli błąd dotyczy logowania, reset może być potrzebny
+                        if (!username) resetUI();
                         break;
                 }
             };
@@ -337,7 +416,7 @@
                     socket.send(JSON.stringify({ type: 'login', payload: { username, password } }));
                 }
             } else {
-                updateUsers([]); // Pokaż formularz logowania jeśli brak danych
+                smarterUpdateUsers([]);
             }
         }
 
