@@ -14,103 +14,57 @@
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
         
-        /* === POCZĄTEK GŁÓWNEJ ZMIANY: Nowy, stabilny layout === */
         html, body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
+            height: 100%; margin: 0; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--secondary-bg-color);
         }
 
-        .app-layout {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+        .app-layout { display: flex; flex-direction: column; height: 100%; }
 
         .chat-header {
-            flex-shrink: 0; /* Nagłówek nie będzie się kurczyć */
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 20px;
-            padding: 10px 15px;
-            font-size: clamp(1rem, 4vw, 1.25rem);
-            font-weight: bold;
-            background-color: var(--secondary-bg-color);
+            flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start;
+            gap: 20px; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem);
+            font-weight: bold; background-color: var(--secondary-bg-color);
             border-bottom: 1px solid var(--border-color);
         }
 
-        .main-content {
-            display: flex;
-            flex-direction: row;
-            flex-grow: 1; /* Główna treść wypełnia dostępną przestrzeń */
-            min-height: 0; /* Kluczowe dla poprawnego działania flexbox */
-        }
+        .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         
         .chat-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background-color: var(--background-color);
+            flex-grow: 1; display: flex; flex-direction: column;
+            min-width: 0; background-color: var(--background-color);
+            position: relative; z-index: 1; /* Ustawienie kontekstu stosu */
         }
 
-        .chat-windows {
-            position: relative;
-            flex-grow: 1;
-        }
+        .chat-windows { position: relative; flex-grow: 1; }
         
         #form {
-            flex-shrink: 0; /* Formularz nie będzie się kurczyć */
-            display: flex;
-            padding: 10px;
-            background-color: var(--secondary-bg-color);
-            border-top: 1px solid var(--border-color);
+            flex-shrink: 0; display: flex; padding: 10px;
+            background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color);
         }
 
+        /* === POCZĄTEK ZMIANY: Przywrócenie widoczności przycisku === */
         .sidebar {
-            width: var(--sidebar-width);
-            flex-shrink: 0;
-            background-color: var(--secondary-bg-color);
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid var(--border-color);
+            width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color);
+            display: flex; flex-direction: column; border-left: 1px solid var(--border-color);
             transition: width var(--transition-speed), min-width var(--transition-speed);
-            position: relative;
-            overflow-x: hidden;
+            position: relative; overflow-x: visible; /* Zmieniono z hidden na visible */
+            z-index: 2; /* Wyższy z-index, aby pasek był nad chat-area */
         }
+        /* === KONIEC ZMIANY === */
 
-        .sidebar.collapsed {
-            width: 0;
-            min-width: 0;
-            border-left: none;
-        }
+        .sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
         
         #sidebar-toggle {
-            position: absolute;
-            top: 10px;
-            left: -40px;
-            width: 30px;
-            height: 30px;
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 5px 0 0 5px;
-            cursor: pointer;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 10px; left: -40px; width: 30px; height: 30px;
+            background-color: var(--accent-color); color: white; border: none;
+            border-radius: 5px 0 0 5px; cursor: pointer;
+            z-index: 3; /* Najwyższy z-index, aby przycisk był na wierzchu */
+            display: flex; align-items: center; justify-content: center;
         }
         
-        .user-slots-area {
-            padding: 10px;
-            flex-grow: 1;
-            overflow-y: auto; /* To jest ten suwak, o który prosiłeś */
-        }
-        /* === KONIEC GŁÓWNEJ ZMIANY === */
+        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         
         #header-title { color: var(--private-msg-color); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -141,7 +95,6 @@
     </style>
 </head>
 <body>
-    <!-- ZMIANA: Całkowicie nowa struktura HTML dla poprawnego layoutu -->
     <div class="app-layout">
         <div class="chat-header" id="chat-header">
             <span id="header-title">Forum</span>
