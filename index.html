@@ -14,23 +14,65 @@
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
-        .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
 
-        /* === POCZĄTEK ZMIANY: Przesunięcie przycisku === */
-        .chat-header {
+        /* === POCZĄTEK GŁÓWNEJ ZMIANY: Układ oparty na Flexbox === */
+        
+        .body-wrapper {
+            display: flex;
+            height: 100vh;
+        }
+
+        .main-container {
+            display: flex; /* Zmienione z block na flex */
+            flex-direction: column; /* Ustawienie, aby elementy w środku układały się w kolumnie */
+            flex-grow: 1; /* Pozwala temu kontenerowi rosnąć i wypełniać przestrzeń */
+            min-width: 0; /* Kluczowe dla flexbox, aby zapobiec rozpychaniu przez zawartość */
+            background-color: var(--header-bg-color);
+            transition: none; /* Usunięto starą animację marginesu */
+        }
+
+        .sidebar {
+            position: relative; /* Zmieniono z fixed na relative */
+            width: var(--sidebar-width);
+            flex-shrink: 0; /* Zapobiega kurczeniu się paska bocznego */
+            background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-left: 1px solid var(--border-color);
+            transition: width var(--transition-speed); /* Nowa animacja dla zwijania */
+            overflow: hidden; /* Ukrywa zawartość, gdy pasek się zwija */
+        }
+
+        .sidebar.collapsed {
+            width: 0; /* Zwijanie polega na zmianie szerokości do zera */
+            border-left: none; /* Ukryj ramkę po zwinięciu */
+            /* Usunięto transform: translateX */
+        }
+
+        /* Przycisk zwijania jest teraz pozycjonowany względem paska bocznego */
+        #sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            left: -40px; /* Nadal wysunięty, aby był widoczny */
+            width: 30px;
+            height: 30px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 5px 0 0 5px;
+            cursor: pointer;
+            z-index: 10;
+            font-size: 1.2rem;
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Zmieniono z space-between na flex-start */
-            gap: 20px; /* Dodano odstęp między tytułem a przyciskiem */
-            padding: 10px 15px;
-            font-size: clamp(1rem, 4vw, 1.25rem);
-            font-weight: bold;
-            background-color: var(--secondary-bg-color);
-            flex-shrink: 0;
+            justify-content: center;
         }
-        /* === KONIEC ZMIANY === */
-        
+
+        /* === KONIEC GŁÓWNEJ ZMIANY === */
+
+        .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
+        .chat-header { display: flex; align-items: center; justify-content: flex-start; gap: 20px; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
         #header-title { color: var(--private-msg-color); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
@@ -43,13 +85,12 @@
         #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); flex-shrink: 0; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; height: 100%; position: fixed; right: 0; top: 0; border-left: 1px solid var(--border-color); transition: transform var(--transition-speed); }
-        .main-container { margin-right: var(--sidebar-width); }
-        .sidebar.collapsed { transform: translateX(calc(100% + 1px)); } .sidebar.collapsed + .main-container { margin-right: 0; }
-        #sidebar-toggle { position: absolute; top: 10px; left: -40px; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px 0 0 5px; cursor: pointer; z-index: 10; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        
         .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
+        
+        /* Zapewnienie, że lista użytkowników jest przewijalna */
         .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
@@ -63,8 +104,31 @@
     </style>
 </head>
 <body>
-    <div class="sidebar" id="sidebar"><button id="sidebar-toggle"><</button><div class="chat-tabs" id="chat-tabs"></div><div class="user-slots-area"><h3>Użytkownicy</h3><div id="user-slots-container"></div></div></div>
-    <div class="main-container" id="main-container"><div class="chat-area"><div class="chat-header" id="chat-header"><span id="header-title">Forum</span><button id="clear-history-btn">Wyczyść Czat</button></div><div class="chat-windows" id="chat-windows"></div><form id="form" action=""><input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled /><button type="submit" disabled>Wyślij</button></form></div></div>
+    <!-- ZMIANA: Dodano .body-wrapper -->
+    <div class="body-wrapper">
+        <div class="main-container" id="main-container">
+            <div class="chat-area">
+                <div class="chat-header" id="chat-header">
+                    <span id="header-title">Forum</span>
+                    <button id="clear-history-btn">Wyczyść Czat</button>
+                </div>
+                <div class="chat-windows" id="chat-windows"></div>
+                <form id="form" action="">
+                    <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
+                    <button type="submit" disabled>Wyślij</button>
+                </form>
+            </div>
+        </div>
+        <div class="sidebar" id="sidebar">
+            <button id="sidebar-toggle"><</button>
+            <div class="chat-tabs" id="chat-tabs"></div>
+            <div class="user-slots-area">
+                <h3>Użytkownicy</h3>
+                <div id="user-slots-container"></div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, username = null, activeChat = 'public', isModerator = false;
