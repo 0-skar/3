@@ -16,7 +16,21 @@
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
         .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
-        .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+
+        /* === POCZĄTEK ZMIANY: Przesunięcie przycisku === */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Zmieniono z space-between na flex-start */
+            gap: 20px; /* Dodano odstęp między tytułem a przyciskiem */
+            padding: 10px 15px;
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            font-weight: bold;
+            background-color: var(--secondary-bg-color);
+            flex-shrink: 0;
+        }
+        /* === KONIEC ZMIANY === */
+        
         #header-title { color: var(--private-msg-color); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
@@ -25,14 +39,7 @@
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message { color: var(--text-color); }
         .private-message { color: var(--private-msg-color); font-style: italic; }
-
-        /* === POCZĄTEK ZMIANY: Klasa dla nazwy użytkownika === */
-        .user-message .username-color {
-            color: var(--accent-color);
-            font-weight: bold;
-        }
-        /* === KONIEC ZMIANY === */
-
+        .user-message .username-color { color: var(--accent-color); font-weight: bold; }
         #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); flex-shrink: 0; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
@@ -66,7 +73,6 @@
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
         function switchChat(id) { activeChat = id; ui.headerTitle.textContent = id === 'public' ? 'Forum' : `Czat z ${id}`; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); document.getElementById(`messages-${id}`).style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } }
         
-        // === POCZĄTEK ZMIANY: Użycie <span> do kolorowania nazwy użytkownika ===
         function addMessage(data, targetChat) {
             const mDiv = document.getElementById(`messages-${targetChat}`);
             if (!mDiv) return;
@@ -76,14 +82,12 @@
                 i.textContent = data.message;
             } else {
                 i.className = 'user-message';
-                // Używamy innerHTML, aby wstawić span do kolorowania
                 i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`;
                 if (data.isPrivate) i.classList.add('private-message');
             }
             mDiv.appendChild(i);
             mDiv.scrollTop = mDiv.scrollHeight;
         }
-        // === KONIEC ZMIANY ===
 
         function updateUsers(users) {
             users.sort((a, b) => { if (a.role === 'moderator' && b.role !== 'moderator') return -1; if (a.role !== 'moderator' && b.role === 'moderator') return 1; return a.username.localeCompare(b.username); });
