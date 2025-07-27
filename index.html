@@ -22,39 +22,12 @@
 
         .app-layout { display: flex; flex-direction: column; height: 100%; }
 
-        /* === POCZĄTEK ZMIANY: Nowy layout nagłówka === */
         .chat-header {
-            flex-shrink: 0; display: flex; align-items: center;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start;
             gap: 20px; padding: 10px 15px;
-            background-color: var(--secondary-bg-color);
+            font-weight: bold; background-color: var(--secondary-bg-color);
             border-bottom: 1px solid var(--border-color);
         }
-
-        .header-left-panel {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .chat-tabs {
-            flex-grow: 1; /* Zakładki wypełniają wolne miejsce */
-            display: flex;
-            justify-content: center; /* Wyśrodkowanie zakładek */
-            padding: 0;
-            border-bottom: none; /* Usunięcie zbędnej ramki */
-        }
-        
-        #sidebar-toggle {
-            position: static; /* Usunięcie pozycjonowania absolutnego */
-            flex-shrink: 0; /* Zapobiega kurczeniu się przycisku */
-            width: 30px; height: 30px;
-            background-color: var(--accent-color); color: white; border: none;
-            border-radius: 5px; /* Standardowy prostokątny przycisk */
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex; align-items: center; justify-content: center;
-        }
-        /* === KONIEC ZMIANY === */
 
         .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         
@@ -70,17 +43,35 @@
             background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color);
         }
 
+        /* === POCZĄTEK ZMIANY: Poprawiony i finalny kod paska bocznego === */
         .sidebar {
             width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color);
             display: flex; flex-direction: column; border-left: 1px solid var(--border-color);
             transition: width var(--transition-speed), min-width var(--transition-speed);
-            overflow-x: hidden;
+            position: relative;
         }
         
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
+        
+        #sidebar-toggle {
+            position: absolute; top: 10px; left: -40px; width: 30px; height: 30px;
+            background-color: var(--accent-color); color: white; border: none;
+            border-radius: 5px 0 0 5px; cursor: pointer;
+            z-index: 10; /* Wysoki z-index gwarantuje widoczność */
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .chat-tabs {
+            border-bottom: 1px solid var(--border-color);
+            padding: 5px;
+            flex-shrink: 0;
+        }
+        /* === KONIEC ZMIANY === */
+
         .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         
-        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
+        #header-title { color: var(--private-msg-color); font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
@@ -93,7 +84,7 @@
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
-        .tab-button { width: auto; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin: 0 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
@@ -109,21 +100,18 @@
 </head>
 <body>
     <div class="app-layout">
-        <!-- ZMIANA: Przycisk i zakładki zostały przeniesione do nagłówka -->
         <div class="chat-header" id="chat-header">
-            <div class="header-left-panel">
-                <span id="header-title">Forum</span>
-                <button id="clear-history-btn">Wyczyść Czat</button>
-            </div>
-            <div class="chat-tabs" id="chat-tabs"></div>
-            <button id="sidebar-toggle"><</button>
+            <span id="header-title">Forum</span>
+            <button id="clear-history-btn">Wyczyść Czat</button>
         </div>
         <div class="main-content">
             <div class="chat-area">
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
-            <!-- ZMIANA: Pasek boczny zawiera już tylko listę użytkowników -->
+            <!-- ZMIANA: Pasek boczny ma znowu starą, kompletną strukturę -->
             <div class="sidebar" id="sidebar">
+                <button id="sidebar-toggle"><</button>
+                <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
                     <h3>Użytkownicy</h3>
                     <div id="user-slots-container"></div>
@@ -142,14 +130,11 @@
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
+        
         function switchChat(id) {
-             // ZMIANA: Logika tytułu jest teraz inna, bo zakładki są w headerze
-            if (id === 'public') {
-                ui.headerTitle.style.display = 'block';
-            } else {
-                ui.headerTitle.style.display = 'none';
-            }
-
+            // Przywrócono prostą logikę przełączania
+            activeChat = id;
+            
             document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
             const messagesToShow = document.getElementById(`messages-${id}`);
             if (messagesToShow) messagesToShow.style.display = 'block';
@@ -157,7 +142,6 @@
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = document.getElementById(`tab-${id}`);
             if(tab) {
-                activeChat = id; // Aktualizuj aktywny czat tylko jeśli zakładka istnieje
                 tab.classList.add('active');
                 tab.classList.remove('has-unread');
             }
