@@ -22,77 +22,62 @@
 
         /* === POCZĄTEK FINALNEGO UKŁADU === */
         .app-layout {
-            display: flex;
-            flex-direction: row; /* Główny układ to dwie kolumny obok siebie */
             height: 100%;
+            display: grid; /* Używamy CSS Grid */
+            grid-template-columns: 1fr auto; /* Dwie kolumny: jedna elastyczna, druga dopasowana do treści */
+            grid-template-rows: auto 1fr auto; /* Trzy wiersze: auto, elastyczny, auto */
+            grid-template-areas:
+                "header sidebar"
+                "chat   sidebar"
+                "form   sidebar";
         }
 
-        .main-panel {
-            flex-grow: 1; /* Lewa kolumna wypełnia dostępną przestrzeń */
-            display: flex;
-            flex-direction: column; /* Wewnętrzny układ tej kolumny jest pionowy */
-            min-width: 0;
-            background-color: var(--secondary-bg-color);
-        }
-
+        .chat-header { grid-area: header; }
+        .chat-area { grid-area: chat; }
+        #form { grid-area: form; }
+        .sidebar { grid-area: sidebar; }
+        
         .chat-header {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 20px;
-            padding: 10px 15px;
+            display: flex; align-items: center; justify-content: flex-start;
+            gap: 20px; padding: 10px 15px;
+            background-color: var(--secondary-bg-color);
             border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
         }
         
         .chat-area {
-            flex-grow: 1; /* Okno wiadomości rozciąga się w pionie */
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            background-color: var(--background-color);
             position: relative;
+            background-color: var(--background-color);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            min-height: 0;
         }
         
         #form {
-            flex-shrink: 0;
-            display: flex;
-            padding: 10px;
+            display: flex; padding: 10px;
+            background-color: var(--secondary-bg-color);
             border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
         }
-
+        
         .sidebar {
             width: var(--sidebar-width);
-            flex-shrink: 0;
+            display: flex; flex-direction: column;
             background-color: var(--secondary-bg-color);
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid var(--border-color);
             transition: width var(--transition-speed), min-width var(--transition-speed);
             position: relative;
-        }
-        
-        .sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
-        
-        #sidebar-toggle {
-            position: absolute;
-            top: 10px;
-            left: -40px;
-            width: 30px;
-            height: 30px;
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 5px 0 0 5px;
-            cursor: pointer;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
+            overflow: hidden;
         }
 
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
+        .sidebar.collapsed { width: 0; min-width: 0; }
+        
+        #sidebar-toggle {
+            position: absolute; top: 10px; left: -40px; width: 30px; height: 30px;
+            background-color: var(--accent-color); color: white; border: none;
+            border-radius: 5px 0 0 5px; cursor: pointer; z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+        }
         /* === KONIEC FINALNEGO UKŁADU === */
         
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
@@ -113,6 +98,7 @@
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
+        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
@@ -126,19 +112,17 @@
 </head>
 <body>
     <div class="app-layout">
-        <div class="main-panel">
-            <div class="chat-header" id="chat-header">
-                <span id="header-title">Forum</span>
-                <button id="clear-history-btn">Wyczyść Czat</button>
-            </div>
-            <div class="chat-area">
-                <div class="chat-windows" id="chat-windows"></div>
-            </div>
-            <form id="form" action="">
-                <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
-                <button type="submit" disabled>Wyślij</button>
-            </form>
+        <div class="chat-header" id="chat-header">
+            <span id="header-title">Forum</span>
+            <button id="clear-history-btn">Wyczyść Czat</button>
         </div>
+        <div class="chat-area">
+            <div class="chat-windows" id="chat-windows"></div>
+        </div>
+        <form id="form" action="">
+            <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
+            <button type="submit" disabled>Wyślij</button>
+        </form>
         <div class="sidebar" id="sidebar">
             <button id="sidebar-toggle"><</button>
             <div class="chat-tabs" id="chat-tabs"></div>
