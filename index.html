@@ -2,232 +2,316 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <!-- ZMIANA: Usunięto 'width=device-width' aby strona nie skalowała się na mobile -->
-    <meta name="viewport" content="user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Forum</title>
     <style>
         :root {
-            --background-color: #2c2f33; --secondary-bg-color: #23272a; --text-color: #ffffff; 
-            --text-muted-color: #99aab5; --accent-color: #7289da; --private-msg-color: #f0b90c; 
-            --border-color: #444; --hover-color: #3a3e42; --danger-color: #dc3545;
-            --sidebar-width: 240px; --header-height: 52px;
+            --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
+            --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
+            --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
+            --notification-color: #28a745; --danger-color: #dc3545;
+            --sidebar-width: clamp(200px, 80vw, 240px); /* Zwiększono maksymalną szerokość na urządzeniach mobilnych */
+            --transition-speed: 0.3s;
         }
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; background-color: var(--secondary-bg-color); }
+        @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
         
-        /* ZMIANA: Solidna struktura flexbox dla całego layoutu */
-        .app-layout { display: flex; flex-direction: column; height: 100vh; }
-        .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
-        .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
-        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width 0.3s; }
+        html, body {
+            height: 100%; margin: 0; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-bg-color);
+        }
+
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background-color: var(--secondary-bg-color); /* Zmieniono dla spójności */
+        }
+
+        .chat-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background-color: var(--secondary-bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
         
-        .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
-        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: 1.25rem; }
+        .header-left-panel { display: flex; align-items: center; gap: 20px; }
         
-        .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
-        .chat-tabs { height: var(--header-height); box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 0 5px; flex-shrink: 0; display: flex; align-items: center; }
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; min-height: 0; }
-        .user-slots-area h3 { margin: 5px 0 15px; font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted-color); }
+        .chat-windows {
+            position: relative;
+            flex-grow: 1;
+            background-color: var(--background-color);
+        }
+
+        #form {
+            flex-shrink: 0;
+            display: flex;
+            padding: 10px;
+            background-color: var(--secondary-bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+            transition: width var(--transition-speed), min-width var(--transition-speed);
+            position: relative;
+        }
         
-        .chat-windows { position: relative; flex-grow: 1; min-height: 0; }
-        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; inset: 0; overflow-y: auto; }
-        .system-message, .user-message { padding-bottom: 8px; word-wrap: break-word; }
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            border-left: none;
+            overflow: hidden;
+        }
+        
+        #sidebar-toggle {
+            position: static;
+            width: 30px;
+            height: 30px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
+        #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+        
+        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
+        .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
+        .user-message { color: var(--text-color); }
         .private-message { color: var(--private-msg-color); font-style: italic; }
         .user-message .username-color { color: var(--accent-color); font-weight: bold; }
         
-        #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
-        .user-slot { display: flex; align-items: center; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
-        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: 1rem; cursor: pointer; white-space: nowrap; }
-        .user-slot.inactive .user-name { color: var(--text-muted-color); font-style: italic; }
+        .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
+        .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        .join-form-inline { width: 100%; display: flex; flex-direction: column; gap: 5px; }
-        .join-form-inline input { padding: 8px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; }
-        .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; }
-        
-        .self-management-panel { padding: 15px; color: var(--text-color); }
+        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
+        .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
+        .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
+        .user-slot-header { display: flex; align-items: center; width: 100%; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
+        .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
+        .action-button:hover { color: #ff4d4d; }
+        .join-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
+        .join-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
+        .join-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
+
+        /* === POCZĄTEK ZMIANY: Media Query dla urządzeń mobilnych === */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute; /* Pasek boczny staje się nakładką */
+                right: 0;
+                top: 0;
+                height: 100%;
+                z-index: 100; /* Upewniamy się, że jest na wierzchu */
+                border-left: 1px solid var(--border-color);
+            }
+            #sidebar-toggle {
+                display: none; /* Ukrywamy stary przycisk... */
+            }
+            /* ... i tworzymy nowy, widoczny na głównym nagłówku, do pokazywania paska */
+            .mobile-toggle {
+                display: block !important;
+            }
+        }
+        /* === KONIEC ZMIANY === */
     </style>
 </head>
 <body>
     <div class="app-layout">
         <div class="main-content">
             <div class="chat-area">
-                <div class="chat-header" id="chat-header"><span id="header-title">Forum</span><button id="sidebar-toggle" style="margin-left:auto;"><</button></div>
+                <div class="chat-header" id="chat-header">
+                    <div class="header-left-panel">
+                        <span id="header-title">Forum</span>
+                        <button id="clear-history-btn">Wyczyść Czat</button>
+                    </div>
+                    <button id="sidebar-toggle"><</button>
+                </div>
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
+            
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
-                <div class="user-slots-area"><h3>Użytkownicy</h3><div id="user-slots-container"></div></div>
+                <div class="user-slots-area">
+                    <h3>Użytkownicy</h3>
+                    <div id="user-slots-container"></div>
+                </div>
             </div>
         </div>
-        <form id="form" action=""><input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled /><button type="submit" disabled>Wyślij</button></form>
+        <form id="form" action="">
+            <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
+            <button type="submit" disabled>Wyślij</button>
+        </form>
     </div>
     
     <script>
-        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle') };
-        let socket, username = null, userRole = null;
+        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), chatHeader: document.getElementById('chat-header'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
+        let socket, username = null, activeChat = 'public', isModerator = false;
+        const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
-        function createChatWindow(id, name, isPrivate = false) {
-            if (document.getElementById(`content-${id}`)) return;
-            const contentDiv = document.createElement('div');
-            contentDiv.style.display = 'none';
-            contentDiv.className = 'messages';
-            contentDiv.id = `content-${id}`;
-            if (isPrivate) {
-                const messagesUl = document.createElement('ul');
-                messagesUl.id = `messages-${id}`;
-                contentDiv.appendChild(messagesUl);
-            } else {
-                contentDiv.innerHTML = `<div class="self-management-panel"><h4>Moje Konto</h4><p>Ustaw hasło, aby Twoje konto stało się stałe.</p><input type="password" id="new-password-input" placeholder="Wpisz nowe hasło..."><button id="save-password-btn">Zapisz i zarejestruj konto</button></div>`;
-            }
-            ui.chatWindows.appendChild(contentDiv);
-            
-            const tabButton = document.createElement('button');
-            tabButton.className = 'tab-button';
-            tabButton.textContent = name;
-            tabButton.id = `tab-${id}`;
-            tabButton.onclick = () => switchChat(id);
-            ui.chatTabs.appendChild(tabButton);
-
-            if (!isPrivate) {
-                document.getElementById('save-password-btn').onclick = () => {
-                    const pass = document.getElementById('new-password-input').value;
-                    if (pass) socket.send(JSON.stringify({ type: 'register_account', payload: { password: pass } }));
-                };
-            }
-        }
+        function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
         
         function switchChat(id) {
-            document.querySelectorAll('.chat-windows > div').forEach(el => el.style.display = 'none');
-            document.getElementById(`content-${id}`).style.display = 'block';
+            activeChat = id;
+            document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
+            const messagesToShow = document.getElementById(`messages-${id}`);
+            if (messagesToShow) messagesToShow.style.display = 'block';
+
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${id}`).classList.add('active');
+            const tab = document.getElementById(`tab-${id}`);
+            if(tab) {
+                tab.classList.add('active');
+                tab.classList.remove('has-unread');
+            }
         }
         
-        function addMessage(data, targetChatId) {
-            const containerId = targetChatId === 'public' ? 'content-public' : `messages-${targetChatId}`;
-            const messagesContainer = document.getElementById(containerId);
-            if (!messagesContainer) return;
-            const item = document.createElement('li');
-            item.className = data.username === "System" ? 'system-message' : 'user-message';
-            if (data.isPrivate) item.classList.add('private-message');
-            item.innerHTML = data.username === "System" ? data.message : `<span class="username-color">${data.username}</span>: ${data.message}`;
-            const targetUl = messagesContainer.tagName === 'UL' ? messagesContainer : messagesContainer.querySelector('ul');
-            targetUl.appendChild(item);
-            targetUl.scrollTop = targetUl.scrollHeight;
+        function addMessage(data, targetChat) {
+            const mDiv = document.getElementById(`messages-${targetChat}`);
+            if (!mDiv) return;
+            const i = document.createElement('li');
+            if (data.username === "System") {
+                i.className = 'system-message';
+                i.textContent = data.message;
+            } else {
+                i.className = 'user-message';
+                i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`;
+                if (data.isPrivate) i.classList.add('private-message');
+            }
+            mDiv.appendChild(i);
+            mDiv.scrollTop = mDiv.scrollHeight;
         }
 
         function updateUsers(users) {
-            users.sort((a, b) => a.username.localeCompare(b.username));
+            users.sort((a, b) => { if (a.role === 'moderator' && b.role !== 'moderator') return -1; if (a.role !== 'moderator' && b.role === 'moderator') return 1; return a.username.localeCompare(b.username); });
+            const currentUserData = users.find(u => u.username === username);
+            isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
+            ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
             ui.userSlotsContainer.innerHTML = '';
             users.forEach(user => {
-                const slot = document.createElement('div');
-                slot.className = 'user-slot';
-                if (user.status === 'inactive') slot.classList.add('inactive');
-                
-                let icon = '';
-                if (user.role === 'moderator') icon = '👑 ';
-                else if (user.type === 'registered') icon = '⭐ ';
-
-                const nameEl = document.createElement('span');
-                nameEl.className = 'user-name';
-                nameEl.innerHTML = `${icon}${user.username}${user.username === username ? ' (Ty)' : ''}`;
-                nameEl.onclick = () => {
-                    const targetId = user.username === username ? 'self-management' : user.username;
-                    createChatWindow(targetId, user.username === username ? 'Moje Konto' : user.username, user.username !== username);
-                    switchChat(targetId);
-                    if (user.username !== username) socket.send(JSON.stringify({ type: "get_private_history", payload: { partner: user.username } }));
-                };
-                slot.appendChild(nameEl);
-
-                if (username && user.username !== username && userRole === 'moderator') {
-                    const removeBtn = document.createElement('button');
-                    removeBtn.textContent = '×';
-                    removeBtn.style.cssText = 'margin-left: auto; background: none; border: none; color: var(--text-muted-color); cursor: pointer; font-size: 1.2rem;';
-                    removeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        if (confirm(`Usunąć użytkownika ${user.username}? Spowoduje to usunięcie konta na stałe.`)) {
-                            socket.send(JSON.stringify({ type: 'remove_user', payload: { username: user.username }}));
-                        }
-                    };
-                    slot.appendChild(removeBtn);
+                const slot = document.createElement('div'); slot.className = 'user-slot';
+                const header = document.createElement('div'); header.className = 'user-slot-header';
+                let nameHTML = (user.role === 'moderator' ? '👑 ' : '') + user.username;
+                let actionsHTML = '';
+                if (user.username === username) {
+                    nameHTML += ' (Ty)';
+                    actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
+                } else if (isModerator) {
+                    actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
                 }
-                ui.userSlotsContainer.appendChild(slot);
+                header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
+                if (user.username !== username) { header.querySelector('.user-name').onclick = () => openPrivateChat(user.username); } 
+                const leaveBtn = header.querySelector('.leave-button');
+                if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); localStorage.removeItem('forumUsername'); resetUI(); }; }
+                const removeBtn = header.querySelector('.remove-user-button');
+                if (removeBtn) { removeBtn.onclick = () => { if (confirm(`Czy na pewno chcesz usunąć ${removeBtn.dataset.user}?`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
+                slot.appendChild(header); ui.userSlotsContainer.appendChild(slot);
             });
-            if (!username) createRegistrationSlot();
+            if (!username) { createRegistrationSlot(); }
         }
         
         function createRegistrationSlot() {
-            if (document.getElementById('join-slot')) return;
-            const slot = document.createElement('div');
-            slot.id = 'join-slot';
-            slot.className = 'user-slot';
-            
-            const form = document.createElement('form');
-            form.className = 'join-form-inline';
-            form.innerHTML = `<input type="text" id="join-username" placeholder="Twoja nazwa" required><input type="password" id="join-password" placeholder="Hasło (opcjonalne)"><button type="submit">Dołącz</button>`;
-            form.onsubmit = (e) => {
-                e.preventDefault();
-                const joinUsername = form.querySelector('#join-username').value.trim();
-                const joinPassword = form.querySelector('#join-password').value;
-                if (joinUsername) {
-                    socket.send(JSON.stringify({ type: 'join', payload: { username: joinUsername, password: joinPassword } }));
-                }
+            const slot = document.createElement('div'); slot.className = 'user-slot'; slot.id = 'join-slot';
+            const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
+            slot.appendChild(header);
+            header.onclick = () => {
+                header.style.display = 'none';
+                const form = document.createElement('form');
+                form.className = 'join-form-inline';
+                form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><input type="password" placeholder="Hasło moderatora (opcjonalne)" /><button type="submit">Dołącz</button>`;
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    const nameInput = form.querySelector('input[type="text"]');
+                    const passInput = form.querySelector('input[type="password"]');
+                    // === POPRAWKA BŁĘDU: Użycie poprawnej zmiennej 'nameInput' ===
+                    const chosenUsername = nameInput.value.trim();
+                    const password = passInput.value.trim();
+                    if (chosenUsername) {
+                        username = chosenUsername;
+                        localStorage.setItem('forumUsername', chosenUsername);
+                        socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername, password: password } }));
+                        ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość...";
+                    }
+                };
+                slot.appendChild(form); form.querySelector('input[type="text"]').focus();
             };
-            slot.appendChild(form);
             ui.userSlotsContainer.appendChild(slot);
         }
 
+        function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.sendButton.disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; updateUsers([]); }
+        function openPrivateChat(targetUser) { createChatWindow(targetUser, `${targetUser}`); switchChat(targetUser); }
+        async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
+        
         function connectWebSocket() {
-            socket = new WebSocket("wss://eosforus-chat.hf.space/ws/");
+            socket = new WebSocket(wsUrl);
+            socket.onopen = () => { checkStoredUser(); loadHistory(); };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                switch(data.type) {
-                    case 'welcome':
-                        username = data.payload.username; userRole = data.payload.role;
-                        ui.input.disabled = false; ui.sendButton.disabled = false;
-                        ui.input.placeholder = "Wpisz wiadomość...";
-                        document.getElementById('join-slot')?.remove();
-                        break;
-                    case 'user_update': updateUsers(data.payload.users); break;
-                    case 'chat_message': addMessage(data.payload, 'public'); break;
-                    case 'private_message':
-                        const partner = data.payload.sender === username ? data.payload.recipient : data.payload.sender;
-                        addMessage(data.payload, partner);
-                        break;
-                    case 'private_history_data':
-                        const partnerId = data.payload.partner;
-                        if (!document.getElementById(`content-${partnerId}`)) createChatWindow(partnerId, partnerId, true);
-                        data.payload.history.forEach(msg => addMessage({...msg, isPrivate: true}, partnerId));
-                        break;
-                    case 'account_updated': alert(data.payload.message); break;
-                    case 'error': alert(`Błąd: ${data.payload.message}`); break;
-                }
+                if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
+                else if (data.type === 'user_update') { updateUsers(data.payload.users); }
+                else if (data.type === 'private_message') { const sender = data.payload.sender; const chatPartner = sender === username ? data.payload.recipient : sender; createChatWindow(chatPartner, `${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner); if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.classList.add('has-unread'); } }
+                else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; }
             };
             socket.onclose = () => { setTimeout(connectWebSocket, 3000); };
         }
-
-        ui.form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = ui.input.value.trim();
-            if (!message) return;
-            const activeTabId = document.querySelector('.tab-button.active')?.id;
-            if (!activeTabId) return;
-
-            const targetId = activeTabId.replace('tab-', '');
-            if (targetId === 'self-management') return; // Nie wysyłaj wiadomości do siebie
-            
-            const type = targetId === 'public' ? 'chat_message' : 'private_message';
-            const payload = targetId === 'public' ? { message } : { recipient: targetId, message };
-            socket.send(JSON.stringify({ type, payload }));
-            ui.input.value = '';
-        });
         
-        ui.sidebarToggle.addEventListener('click', () => ui.sidebar.classList.toggle('collapsed'));
+        function checkStoredUser() {
+            const storedUser = localStorage.getItem('forumUsername');
+            if (storedUser) {
+                username = storedUser;
+                socket.send(JSON.stringify({ type: 'join', payload: { username: username, password: '' } }));
+                ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość...";
+            }
+        }
+        
+        // Zmiana, aby przycisk działał na zwijanie/rozwijanie paska
+        if (window.innerWidth <= 768) {
+            ui.sidebar.classList.add('collapsed');
+            ui.sidebarToggle.textContent = '>';
+        }
 
-        createChatWindow('public', 'Czat Publiczny', true);
+        ui.sidebarToggle.addEventListener('click', () => {
+             ui.sidebar.classList.toggle('collapsed');
+             ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<';
+        });
+
+        ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !username) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); if (type === 'private_message') addMessage({ username, message, isPrivate: true }, activeChat); ui.input.value = ''; });
+        ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
+
+        createChatWindow('public', 'Czat Publiczny');
         switchChat('public');
         connectWebSocket();
     </script>
