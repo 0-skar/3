@@ -17,12 +17,19 @@
         .main-container { display: flex; flex-grow: 1; height: 100%; background-color: var(--header-bg-color); transition: margin-right var(--transition-speed); }
         .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
         .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+        
+        /* === POCZĄTEK ZMIANY: Złoty nagłówek === */
+        #header-title {
+            color: var(--private-msg-color);
+        }
+        /* === KONIEC ZMIANY === */
+
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
-        .user-message b { color: var(--accent-color); }
+        .user-message { color: var(--text-color); } /* Upewniamy się, że domyślny tekst jest biały */
         .private-message { color: var(--private-msg-color); font-style: italic; }
         #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); flex-shrink: 0; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
@@ -56,46 +63,49 @@
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
         function switchChat(id) { activeChat = id; ui.headerTitle.textContent = id === 'public' ? 'Forum' : `Czat z ${id}`; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); document.getElementById(`messages-${id}`).style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } }
-        function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<b>${data.username}:</b> ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
         
-        // === POCZĄTEK ZMIAN: Logika wyświetlania użytkowników ===
+        // === POCZĄTEK ZMIANY: Biały tekst wiadomości ===
+        function addMessage(data, targetChat) {
+            const mDiv = document.getElementById(`messages-${targetChat}`);
+            if (!mDiv) return;
+            const i = document.createElement('li');
+            if (data.username === "System") {
+                i.className = 'system-message';
+                i.textContent = data.message;
+            } else {
+                i.className = 'user-message';
+                // Usunięto pogrubienie i kolorowanie nazwy użytkownika
+                i.textContent = `${data.username}: ${data.message}`;
+                if (data.isPrivate) i.classList.add('private-message');
+            }
+            mDiv.appendChild(i);
+            mDiv.scrollTop = mDiv.scrollHeight;
+        }
+        // === KONIEC ZMIANY ===
+
         function updateUsers(users) {
             users.sort((a, b) => { if (a.role === 'moderator' && b.role !== 'moderator') return -1; if (a.role !== 'moderator' && b.role === 'moderator') return 1; return a.username.localeCompare(b.username); });
-            
             const currentUserData = users.find(u => u.username === username);
             isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
-
             ui.userSlotsContainer.innerHTML = '';
             users.forEach(user => {
                 const slot = document.createElement('div'); slot.className = 'user-slot';
                 const header = document.createElement('div'); header.className = 'user-slot-header';
-                
-                // Dodaj koronę dla moderatora
                 let nameHTML = (user.role === 'moderator' ? '👑 ' : '') + user.username;
                 let actionsHTML = '';
-
                 if (user.username === username) {
                     nameHTML += ' (Ty)';
-                    // Zawsze pokazuj przycisk do opuszczenia na własnym slocie
                     actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
                 } else if (isModerator) {
-                    // Moderator widzi przycisk 'x' na slotach innych użytkowników
                     actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
                 }
-                
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
-                
-                if (user.username !== username) { 
-                    header.querySelector('.user-name').onclick = () => openPrivateChat(user.username);
-                } 
-
+                if (user.username !== username) { header.querySelector('.user-name').onclick = () => openPrivateChat(user.username); } 
                 const leaveBtn = header.querySelector('.leave-button');
                 if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); localStorage.removeItem('forumUsername'); resetUI(); }; }
-
                 const removeBtn = header.querySelector('.remove-user-button');
                 if (removeBtn) { removeBtn.onclick = () => { if (confirm(`Czy na pewno chcesz usunąć ${removeBtn.dataset.user}?`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
-
                 slot.appendChild(header); ui.userSlotsContainer.appendChild(slot);
             });
             if (!username) { createRegistrationSlot(); }
@@ -105,25 +115,20 @@
             const slot = document.createElement('div'); slot.className = 'user-slot'; slot.id = 'join-slot';
             const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
             slot.appendChild(header);
-            
             header.onclick = () => {
                 header.style.display = 'none';
                 const form = document.createElement('form');
                 form.className = 'join-form-inline';
-                // Formularz z polem na hasło
                 form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><input type="password" placeholder="Hasło moderatora (opcjonalne)" /><button type="submit">Dołącz</button>`;
-                
                 form.onsubmit = (e) => {
                     e.preventDefault();
                     const nameInput = form.querySelector('input[type="text"]');
                     const passInput = form.querySelector('input[type="password"]');
                     const chosenUsername = nameInput.value.trim();
                     const password = passInput.value.trim();
-
                     if (chosenUsername) {
                         username = chosenUsername;
                         localStorage.setItem('forumUsername', chosenUsername);
-                        // Wyślij hasło razem z prośbą o dołączenie
                         socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername, password: password } }));
                         ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość...";
                     }
@@ -132,7 +137,6 @@
             };
             ui.userSlotsContainer.appendChild(slot);
         }
-        // === KONIEC ZMIAN ===
 
         function resetUI() { username = null; isModerator = false; ui.clearHistoryBtn.style.display = 'none'; ui.input.disabled = true; ui.sendButton.disabled = true; ui.input.placeholder = "Dołącz, aby rozmawiać..."; updateUsers([]); }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `${targetUser}`); switchChat(targetUser); }
@@ -155,7 +159,7 @@
             const storedUser = localStorage.getItem('forumUsername');
             if (storedUser) {
                 username = storedUser;
-                socket.send(JSON.stringify({ type: 'join', payload: { username: username, password: '' } })); // Wyślij bez hasła przy ponownym połączeniu
+                socket.send(JSON.stringify({ type: 'join', payload: { username: username, password: '' } }));
                 ui.input.disabled = false; ui.sendButton.disabled = false; ui.input.placeholder = "Wpisz swoją wiadomość...";
             }
         }
