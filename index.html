@@ -13,48 +13,85 @@
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
-        html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-
-        /* === POCZĄTEK GŁÓWNEJ ZMIANY: Układ oparty na Flexbox === */
         
-        .body-wrapper {
-            display: flex;
-            height: 100vh;
-        }
-
-        .main-container {
-            display: flex; /* Zmienione z block na flex */
-            flex-direction: column; /* Ustawienie, aby elementy w środku układały się w kolumnie */
-            flex-grow: 1; /* Pozwala temu kontenerowi rosnąć i wypełniać przestrzeń */
-            min-width: 0; /* Kluczowe dla flexbox, aby zapobiec rozpychaniu przez zawartość */
-            background-color: var(--header-bg-color);
-            transition: none; /* Usunięto starą animację marginesu */
-        }
-
-        .sidebar {
-            position: relative; /* Zmieniono z fixed na relative */
-            width: var(--sidebar-width);
-            flex-shrink: 0; /* Zapobiega kurczeniu się paska bocznego */
+        /* === POCZĄTEK GŁÓWNEJ ZMIANY: Nowy, stabilny layout === */
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--secondary-bg-color);
+        }
+
+        .app-layout {
             display: flex;
             flex-direction: column;
             height: 100%;
+        }
+
+        .chat-header {
+            flex-shrink: 0; /* Nagłówek nie będzie się kurczyć */
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 20px;
+            padding: 10px 15px;
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            font-weight: bold;
+            background-color: var(--secondary-bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            flex-grow: 1; /* Główna treść wypełnia dostępną przestrzeń */
+            min-height: 0; /* Kluczowe dla poprawnego działania flexbox */
+        }
+        
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background-color: var(--background-color);
+        }
+
+        .chat-windows {
+            position: relative;
+            flex-grow: 1;
+        }
+        
+        #form {
+            flex-shrink: 0; /* Formularz nie będzie się kurczyć */
+            display: flex;
+            padding: 10px;
+            background-color: var(--secondary-bg-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column;
             border-left: 1px solid var(--border-color);
-            transition: width var(--transition-speed); /* Nowa animacja dla zwijania */
-            overflow: hidden; /* Ukrywa zawartość, gdy pasek się zwija */
+            transition: width var(--transition-speed), min-width var(--transition-speed);
+            position: relative;
+            overflow-x: hidden;
         }
 
         .sidebar.collapsed {
-            width: 0; /* Zwijanie polega na zmianie szerokości do zera */
-            border-left: none; /* Ukryj ramkę po zwinięciu */
-            /* Usunięto transform: translateX */
+            width: 0;
+            min-width: 0;
+            border-left: none;
         }
-
-        /* Przycisk zwijania jest teraz pozycjonowany względem paska bocznego */
+        
         #sidebar-toggle {
             position: absolute;
             top: 10px;
-            left: -40px; /* Nadal wysunięty, aby był widoczny */
+            left: -40px;
             width: 30px;
             height: 30px;
             background-color: var(--accent-color);
@@ -63,26 +100,28 @@
             border-radius: 5px 0 0 5px;
             cursor: pointer;
             z-index: 10;
-            font-size: 1.2rem;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-
+        
+        .user-slots-area {
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto; /* To jest ten suwak, o który prosiłeś */
+        }
         /* === KONIEC GŁÓWNEJ ZMIANY === */
-
-        .chat-area { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
-        .chat-header { display: flex; align-items: center; justify-content: flex-start; gap: 20px; padding: 10px 15px; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: bold; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+        
         #header-title { color: var(--private-msg-color); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
-        .chat-windows { position: relative; flex-grow: 1; background-color: var(--background-color); }
+        
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message { color: var(--text-color); }
         .private-message { color: var(--private-msg-color); font-style: italic; }
         .user-message .username-color { color: var(--accent-color); font-weight: bold; }
-        #form { display: flex; padding: 10px; background-color: var(--secondary-bg-color); flex-shrink: 0; }
+        
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
@@ -90,12 +129,10 @@
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        /* Zapewnienie, że lista użytkowników jest przewijalna */
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
-        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; }
         .join-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
@@ -104,29 +141,29 @@
     </style>
 </head>
 <body>
-    <!-- ZMIANA: Dodano .body-wrapper -->
-    <div class="body-wrapper">
-        <div class="main-container" id="main-container">
+    <!-- ZMIANA: Całkowicie nowa struktura HTML dla poprawnego layoutu -->
+    <div class="app-layout">
+        <div class="chat-header" id="chat-header">
+            <span id="header-title">Forum</span>
+            <button id="clear-history-btn">Wyczyść Czat</button>
+        </div>
+        <div class="main-content">
             <div class="chat-area">
-                <div class="chat-header" id="chat-header">
-                    <span id="header-title">Forum</span>
-                    <button id="clear-history-btn">Wyczyść Czat</button>
-                </div>
                 <div class="chat-windows" id="chat-windows"></div>
-                <form id="form" action="">
-                    <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
-                    <button type="submit" disabled>Wyślij</button>
-                </form>
+            </div>
+            <div class="sidebar" id="sidebar">
+                <button id="sidebar-toggle"><</button>
+                <div class="chat-tabs" id="chat-tabs"></div>
+                <div class="user-slots-area">
+                    <h3>Użytkownicy</h3>
+                    <div id="user-slots-container"></div>
+                </div>
             </div>
         </div>
-        <div class="sidebar" id="sidebar">
-            <button id="sidebar-toggle"><</button>
-            <div class="chat-tabs" id="chat-tabs"></div>
-            <div class="user-slots-area">
-                <h3>Użytkownicy</h3>
-                <div id="user-slots-container"></div>
-            </div>
-        </div>
+        <form id="form" action="">
+            <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
+            <button type="submit" disabled>Wyślij</button>
+        </form>
     </div>
     
     <script>
