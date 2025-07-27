@@ -20,71 +20,106 @@
             background-color: var(--secondary-bg-color);
         }
 
-        /* === POCZĄTEK FINALNEGO UKŁADU === */
+        /* === POCZĄTEK ZMIANY: Nowy główny układ strony === */
         .app-layout {
+            display: flex;
+            flex-direction: row; /* Zmieniono na "row", aby umieścić sidebar po lewej */
             height: 100%;
-            display: grid; /* Używamy CSS Grid */
-            grid-template-columns: 1fr auto; /* Dwie kolumny: jedna elastyczna, druga dopasowana do treści */
-            grid-template-rows: auto 1fr auto; /* Trzy wiersze: auto, elastyczny, auto */
-            grid-template-areas:
-                "header sidebar"
-                "chat   sidebar"
-                "form   sidebar";
         }
 
-        .chat-header { grid-area: header; }
-        .chat-area { grid-area: chat; }
-        #form { grid-area: form; }
-        .sidebar { grid-area: sidebar; }
-        
-        .chat-header {
-            display: flex; align-items: center; justify-content: flex-start;
-            gap: 20px; padding: 10px 15px;
-            background-color: var(--secondary-bg-color);
-            border-bottom: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
-        }
-        
-        .chat-area {
-            position: relative;
-            background-color: var(--background-color);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            min-height: 0;
-        }
-        
-        #form {
-            display: flex; padding: 10px;
-            background-color: var(--secondary-bg-color);
-            border-top: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
-        }
-        
+        /* --- Panel boczny (lewa strona) --- */
         .sidebar {
             width: var(--sidebar-width);
-            display: flex; flex-direction: column;
+            flex-shrink: 0;
             background-color: var(--secondary-bg-color);
+            display: flex;
+            flex-direction: column; /* Ustawia elementy w sidebarze w kolumnie */
+            border-right: 1px solid var(--border-color); /* Zmieniono z border-left */
             transition: width var(--transition-speed), min-width var(--transition-speed);
-            position: relative;
-            overflow: hidden;
+            height: 100%; /* Rozciąga sidebar na całą wysokość */
+        }
+        
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            border-right: none;
+            overflow: hidden; /* Ukrywa zawartość, gdy zwinięty */
         }
 
-        .sidebar.collapsed { width: 0; min-width: 0; }
-        
-        #sidebar-toggle {
-            position: absolute; top: 10px; left: -40px; width: 30px; height: 30px;
-            background-color: var(--accent-color); color: white; border: none;
-            border-radius: 5px 0 0 5px; cursor: pointer; z-index: 10;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem;
+        .sidebar-header {
+            flex-shrink: 0;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
         }
-        /* === KONIEC FINALNEGO UKŁADU === */
+
+        #header-title {
+            color: var(--private-msg-color);
+            font-weight: bold;
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            display: block;
+        }
+
+        .user-slots-area {
+            padding: 10px;
+            flex-grow: 1; /* Powoduje, że lista użytkowników wypełnia dostępną przestrzeń */
+            overflow-y: auto;
+        }
+
+        /* --- Główny kontener czatu (prawa strona) --- */
+        .chat-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            height: 100%;
+            background-color: var(--background-color);
+        }
+
+        .chat-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Odstęp między przyciskiem a tytułem */
+            padding: 10px 15px;
+            background-color: var(--secondary-bg-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #sidebar-toggle {
+            width: 30px; height: 30px;
+            background-color: var(--accent-color); color: white; border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        #chat-area-title {
+            color: var(--text-color);
+            font-weight: bold;
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            flex-grow: 1; /* Przesuwa przycisk "Wyczyść" na prawo */
+        }
         
-        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
+        /* === KONIEC ZMIANY === */
+        
+        .chat-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .chat-windows { position: relative; flex-grow: 1; }
+        
+        #form {
+            flex-shrink: 0; display: flex; padding: 10px;
+            background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color);
+        }
+
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         
-        .chat-windows { position: absolute; top: 0; bottom: 0; left: 0; right: 0; }
-        .messages { list-style-type: none; margin: 0; padding: 15px; height: 100%; box-sizing: border-box; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
+        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
         .user-message { color: var(--text-color); }
@@ -98,7 +133,6 @@
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
         .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
@@ -111,26 +145,39 @@
     </style>
 </head>
 <body>
+    <!-- ZMIANA: Całkowicie nowa struktura HTML dla nowego układu -->
     <div class="app-layout">
-        <div class="chat-header" id="chat-header">
-            <span id="header-title">Forum</span>
-            <button id="clear-history-btn">Wyczyść Czat</button>
-        </div>
-        <div class="chat-area">
-            <div class="chat-windows" id="chat-windows"></div>
-        </div>
-        <form id="form" action="">
-            <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
-            <button type="submit" disabled>Wyślij</button>
-        </form>
+        
+        <!-- Panel boczny (teraz po lewej) -->
         <div class="sidebar" id="sidebar">
-            <button id="sidebar-toggle"><</button>
+            <div class="sidebar-header">
+                <span id="header-title">Forum</span>
+            </div>
             <div class="chat-tabs" id="chat-tabs"></div>
             <div class="user-slots-area">
                 <h3>Użytkownicy</h3>
                 <div id="user-slots-container"></div>
             </div>
         </div>
+
+        <!-- Główny kontener czatu (teraz po prawej) -->
+        <div class="chat-wrapper">
+            <div class="chat-header" id="chat-header">
+                <button id="sidebar-toggle"><</button>
+                <span id="chat-area-title">Czat Publiczny</span>
+                <button id="clear-history-btn">Wyczyść Czat</button>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-windows" id="chat-windows"></div>
+            </div>
+
+            <form id="form" action="">
+                <input id="input" autocomplete="off" placeholder="Dołącz, aby rozmawiać..." disabled />
+                <button type="submit" disabled>Wyślij</button>
+            </form>
+        </div>
+
     </div>
     
     <script>
