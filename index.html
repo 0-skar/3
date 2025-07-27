@@ -11,6 +11,7 @@
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
             --notification-color: #28a745; --danger-color: #dc3545;
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
+            --header-height: 52px; /* === ZMIANA: Wspólna wysokość dla nagłówków === */
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
         
@@ -20,85 +21,57 @@
             background-color: var(--secondary-bg-color);
         }
 
-        .app-layout {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+        .app-layout { display: flex; flex-direction: column; height: 100%; }
 
-        .main-content {
-            display: flex;
-            flex-direction: row;
-            flex-grow: 1;
-            min-height: 0;
-        }
-
-        .chat-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background-color: var(--secondary-bg-color);
-        }
-
+        /* === POCZĄTEK ZMIANY: Zsynchronizowane nagłówki === */
         .chat-header {
+            height: var(--header-height);
+            box-sizing: border-box;
+            padding: 0 15px;
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 15px;
             background-color: var(--secondary-bg-color);
             border-bottom: 1px solid var(--border-color);
         }
-        
-        .header-left-panel { display: flex; align-items: center; gap: 20px; }
-        
-        .chat-windows {
-            position: relative;
-            flex-grow: 1;
-            background-color: var(--background-color);
-        }
 
-        #form {
+        .chat-tabs {
+            height: var(--header-height);
+            box-sizing: border-box;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 5px;
             flex-shrink: 0;
             display: flex;
-            padding: 10px;
-            background-color: var(--secondary-bg-color);
-            border-top: 1px solid var(--border-color);
+            align-items: center;
         }
 
-        .sidebar {
-            width: var(--sidebar-width);
-            flex-shrink: 0;
-            background-color: var(--secondary-bg-color);
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid var(--border-color);
-            transition: width var(--transition-speed), min-width var(--transition-speed);
-            overflow: hidden;
-        }
-        
         .sidebar.collapsed {
             width: 0;
             min-width: 0;
             border-left: none;
+            overflow: hidden; /* Ukrywa zawartość, gdy zwinięty */
         }
+
+        .user-slots-area h3 {
+            margin: 0 0 15px; /* Usunięto górny margines dla czystszego wyglądu */
+            font-size: clamp(0.75rem, 3vw, 0.9rem);
+            text-transform: uppercase;
+            color: var(--text-muted-color);
+            padding-top: 10px; /* Dodano padding dla odstępu */
+        }
+        /* === KONIEC ZMIANY === */
+
+        .header-left-panel { display: flex; align-items: center; gap: 20px; }
+        #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         
-        #sidebar-toggle {
-            position: static;
-            width: 30px;
-            height: 30px;
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+        .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
+        .chat-windows { position: relative; flex-grow: 1; }
+        #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
+        
+        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
+        .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -113,12 +86,9 @@
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
-        .chat-tabs { border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
-        .user-slots-area h3 { margin: 5px 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
@@ -131,6 +101,7 @@
 </head>
 <body>
     <div class="app-layout">
+        <!-- Struktura HTML pozostaje taka sama jak w poprzednim kroku -->
         <div class="main-content">
             <div class="chat-area">
                 <div class="chat-header" id="chat-header">
