@@ -32,6 +32,7 @@
             display: flex;
             flex-direction: column; /* Wewnętrzny układ tej kolumny jest pionowy */
             min-width: 0;
+            background-color: var(--secondary-bg-color);
         }
 
         .chat-header {
@@ -41,10 +42,9 @@
             justify-content: flex-start;
             gap: 20px;
             padding: 10px 15px;
-            background-color: var(--secondary-bg-color);
             border-bottom: 1px solid var(--border-color);
         }
-
+        
         .chat-area {
             flex-grow: 1; /* Okno wiadomości rozciąga się w pionie */
             display: flex;
@@ -58,7 +58,6 @@
             flex-shrink: 0;
             display: flex;
             padding: 10px;
-            background-color: var(--secondary-bg-color);
             border-top: 1px solid var(--border-color);
         }
 
@@ -70,7 +69,7 @@
             flex-direction: column;
             border-left: 1px solid var(--border-color);
             transition: width var(--transition-speed), min-width var(--transition-speed);
-            position: relative; /* Kontekst dla przycisku zwijania */
+            position: relative;
         }
         
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; }
@@ -228,7 +227,7 @@
                     e.preventDefault();
                     const nameInput = form.querySelector('input[type="text"]');
                     const passInput = form.querySelector('input[type="password"]');
-                    const chosenUsername = input.value.trim();
+                    const chosenUsername = nameInput.value.trim();
                     const password = passInput.value.trim();
                     if (chosenUsername) {
                         username = chosenUsername;
