@@ -169,7 +169,24 @@
                 header.style.display = 'none';
                 const form = document.createElement('form'); form.className = 'join-form-inline';
                 form.innerHTML = `<input type="text" placeholder="Twoja nazwa..." required /><button type="submit">Dołącz</button>`;
-                form.onsubmit = (e) => { e.preventDefault(); const input = form.querySelector('input'); const chosenUsername = input.value.trim(); if (chosenUsername) { localStorage.setItem('forumUsername', chosenUsername); socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername } })); } };
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    const input = form.querySelector('input');
+                    const chosenUsername = input.value.trim();
+                    if (chosenUsername) {
+                        // === POCZĄTEK POPRAWKI ===
+                        // Ustaw globalną nazwę użytkownika i zapisz w localStorage
+                        username = chosenUsername;
+                        localStorage.setItem('forumUsername', chosenUsername);
+                        socket.send(JSON.stringify({ type: 'join', payload: { username: chosenUsername } }));
+
+                        // Aktywuj pole do wpisywania wiadomości (tak jak w checkStoredUser)
+                        ui.input.disabled = false;
+                        ui.sendButton.disabled = false;
+                        ui.input.placeholder = "Wpisz swoją wiadomość...";
+                        // === KONIEC POPRAWKI ===
+                    }
+                };
                 slot.appendChild(form); form.querySelector('input').focus();
             };
             ui.userSlotsContainer.appendChild(slot);
