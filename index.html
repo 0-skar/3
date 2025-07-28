@@ -103,7 +103,6 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            // ### Logika wyświetlania slotu dołączenia ###
             let browserIdentity = localStorage.getItem('forumUsername');
             if (browserIdentity && !users.some(u => u.username === browserIdentity)) {
                 localStorage.removeItem('forumUsername');
