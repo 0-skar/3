@@ -221,9 +221,11 @@
         }
 
         function createRegistrationSlot() {
+            if (document.getElementById('join-slot-form')) return;
             ui.newUserSlot.innerHTML = '';
             const slot = document.createElement('div');
             slot.className = 'user-slot';
+            slot.id = 'join-slot-form';
             const header = document.createElement('div');
             header.className = 'user-slot-header';
             header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
