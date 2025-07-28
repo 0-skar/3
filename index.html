@@ -100,6 +100,7 @@
                 let actionsHTML = '';
                 if (user.username === username) {
                     nameSpan.title = "Zarządzaj swoim kontem";
+                    nameSpan.style.cursor = 'pointer';
                     nameSpan.onclick = () => showPasswordForm(slot);
                     const isGuest = user.role === 'guest';
                     const actionTitle = isGuest ? "Opuść forum" : "Usuń konto na stałe";
@@ -108,10 +109,9 @@
                     actionsHTML = `<button class="action-button" title="${actionTitle}" onclick="handleLeaveOrDelete('${msgType}', '${confirmMsg}')">×</button>`;
                 } else {
                     nameSpan.title = `Wiadomość do ${user.username}`;
+                    nameSpan.style.cursor = 'pointer';
                     nameSpan.onclick = () => openPrivateChat(user.username);
-                    if (isModerator) {
-                        actionsHTML = `<button class="action-button" title="Usuń ${user.username}" onclick="removeUser('${user.username}')">×</button>`;
-                    }
+                    if (isModerator) actionsHTML = `<button class="action-button" title="Usuń ${user.username}" onclick="removeUser('${user.username}')">×</button>`;
                 }
                 header.appendChild(nameSpan);
                 header.insertAdjacentHTML('beforeend', actionsHTML);
@@ -124,7 +124,7 @@
             if (confirmMsg && !confirm(confirmMsg)) return;
             localStorage.removeItem('forumUsername');
             if (socket) socket.send(JSON.stringify({ type: msgType }));
-            resetToInitialState();
+            resetUI();
         }
 
         function removeUser(user) { if (confirm(`Potwierdź usunięcie ${user}`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: user } })); }
@@ -133,7 +133,8 @@
             if (parentSlot.querySelector('.join-form-inline')) return;
             const form = document.createElement('form');
             form.className = 'join-form-inline';
-            form.innerHTML = `<input type="password" placeholder="Podaj hasło lub wpisz 2017..." required /><button type="submit">Zatwierdź</button>`;
+            // === POPRAWKA: Usunięto podpowiedź o haśle moderatora ===
+            form.innerHTML = `<input type="password" placeholder="Wprowadź hasło..." required /><button type="submit">Zatwierdź</button>`;
             form.onsubmit = (e) => { e.preventDefault(); const pwd = form.querySelector('input[type="password"]').value; if (pwd) socket.send(JSON.stringify({ type: 'submit_password', payload: { password: pwd } })); };
             parentSlot.appendChild(form); form.querySelector('input[type="password"]').focus();
         }
@@ -142,7 +143,7 @@
             ui.userSlotsContainer.innerHTML = '';
             const slot = document.createElement('div'); slot.className = 'user-slot';
             const header = document.createElement('div'); header.className = 'user-slot-header';
-            header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
+            header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color); cursor: pointer;">Dołącz do czatu...</span>';
             header.onclick = () => {
                 header.style.display = 'none';
                 const form = document.createElement('form');
@@ -155,12 +156,15 @@
             ui.userSlotsContainer.appendChild(slot);
         }
 
-        function resetToInitialState() {
-            if (socket) { socket.onclose = null; socket.close(); }
-            socket = null; username = null; isModerator = false;
+        function resetUI() {
+            if (socket) { socket.onclose = null; socket.close(); socket = null; }
+            username = null; isModerator = false;
             ui.clearHistoryBtn.style.display = 'none';
             ui.input.disabled = true; ui.sendButton.disabled = true;
             ui.input.placeholder = "Dołącz, aby rozmawiać...";
+            ui.chatTabs.innerHTML = '';
+            createChatWindow('public', 'Czat Publiczny');
+            switchChat('public');
             createInitialJoinSlot();
         }
         
@@ -184,28 +188,22 @@
                     case 'chat_message': addMessage(data.payload, 'public'); break;
                     case 'private_message': const s = data.payload.sender, p = s === username ? data.payload.recipient : s; createChatWindow(p, `${p}`); addMessage({ ...data.payload, isPrivate: true }, p); if (activeChat !== p) { const t = document.getElementById(`tab-${p}`); if(t) t.classList.add('has-unread'); } break;
                     case 'history_cleared': const c = document.getElementById('messages-public'); if(c) c.innerHTML = ''; break;
-                    case 'error': alert(`Błąd: ${data.payload.message}`); localStorage.removeItem('forumUsername'); resetToInitialState(); break;
+                    case 'error': alert(`Błąd serwera: ${data.payload.message}`); localStorage.removeItem('forumUsername'); resetUI(); break;
                 }
             };
-            socket.onclose = () => { console.log("Connection closed."); resetToInitialState(); };
-            socket.onerror = (err) => { console.error("WebSocket Error:", err); resetToInitialState(); };
+            socket.onclose = () => { console.log("Connection closed."); if (username) { resetUI(); } };
+            socket.onerror = (err) => { console.error("WebSocket Error:", err); resetUI(); };
         }
         
         function checkStoredUser() {
             const storedUser = localStorage.getItem('forumUsername');
-            if (storedUser) {
-                connectWebSocket(storedUser);
-            } else {
-                createInitialJoinSlot();
-            }
+            if (storedUser) connectWebSocket(storedUser); else resetUI();
         }
 
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const msg = ui.input.value.trim(); if (!msg || !username) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message: msg } : { recipient: activeChat, message: msg }; socket.send(JSON.stringify({ type, payload })); if (type === 'private_message') addMessage({ username, message: msg, isPrivate: true }, activeChat); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
 
-        createChatWindow('public', 'Czat Publiczny');
-        switchChat('public');
         checkStoredUser();
     </script>
 </body>
