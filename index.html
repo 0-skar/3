@@ -80,6 +80,7 @@
         function addMessage(data, target) { const m = document.getElementById(`messages-${target}`); if (!m) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } m.appendChild(i); m.scrollTop = m.scrollHeight; }
 
         function updateUsers(users) {
+            console.log("Updating users list for:", username);
             users.sort((a, b) => { if (a.role === 'moderator' && b.role !== 'moderator') return -1; if (a.role !== 'moderator' && b.role === 'moderator') return 1; return a.username.localeCompare(b.username); });
             const currentUserData = users.find(u => u.username === username);
             isModerator = currentUserData ? currentUserData.role === 'moderator' : false;
@@ -101,7 +102,10 @@
                 if (user.username === username) {
                     nameSpan.title = "Zarządzaj swoim kontem";
                     nameSpan.style.cursor = 'pointer';
-                    nameSpan.onclick = () => showPasswordForm(slot);
+                    nameSpan.onclick = () => {
+                        console.log(`Click handler fired for user '${username}'`);
+                        showPasswordForm(slot);
+                    };
                     const isGuest = user.role === 'guest';
                     const actionTitle = isGuest ? "Opuść forum" : "Usuń konto na stałe";
                     const msgType = isGuest ? 'leave' : 'delete_account';
@@ -130,13 +134,21 @@
         function removeUser(user) { if (confirm(`Potwierdź usunięcie ${user}`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: user } })); }
 
         function showPasswordForm(parentSlot) {
-            if (parentSlot.querySelector('.join-form-inline')) return;
+            console.log("Executing showPasswordForm for slot:", parentSlot);
+            if (parentSlot.querySelector('.join-form-inline')) {
+                console.log("Form already exists. Aborting.");
+                return;
+            }
             const form = document.createElement('form');
             form.className = 'join-form-inline';
-            // === POPRAWKA: Usunięto podpowiedź o haśle moderatora ===
             form.innerHTML = `<input type="password" placeholder="Wprowadź hasło..." required /><button type="submit">Zatwierdź</button>`;
-            form.onsubmit = (e) => { e.preventDefault(); const pwd = form.querySelector('input[type="password"]').value; if (pwd) socket.send(JSON.stringify({ type: 'submit_password', payload: { password: pwd } })); };
-            parentSlot.appendChild(form); form.querySelector('input[type="password"]').focus();
+            form.onsubmit = (e) => { 
+                e.preventDefault(); 
+                const pwd = form.querySelector('input[type="password"]').value; 
+                if (pwd) socket.send(JSON.stringify({ type: 'submit_password', payload: { password: pwd } })); 
+            };
+            parentSlot.appendChild(form);
+            form.querySelector('input[type="password"]').focus();
         }
 
         function createInitialJoinSlot() {
@@ -191,7 +203,7 @@
                     case 'error': alert(`Błąd serwera: ${data.payload.message}`); localStorage.removeItem('forumUsername'); resetUI(); break;
                 }
             };
-            socket.onclose = () => { console.log("Connection closed."); if (username) { resetUI(); } };
+            socket.onclose = () => { console.log("Connection closed."); resetUI(); };
             socket.onerror = (err) => { console.error("WebSocket Error:", err); resetUI(); };
         }
         
