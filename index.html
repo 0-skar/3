@@ -47,9 +47,10 @@
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; }
-        .login-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
-        .login-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
-        .login-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
+        .form-inline { margin-top: 10px; display: flex; flex-direction: column; }
+        .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
+        .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
+        .action-menu button.delete-btn { background-color: var(--danger-color); }
     </style>
 </head>
 <body>
@@ -71,7 +72,6 @@
                 <div class="user-slots-area">
                     <h3>Użytkownicy</h3>
                     <div id="user-slots-container"></div>
-                    <!-- ### FIX: Slot dołączania, będzie ukrywany przez JS -->
                     <div id="new-user-slot"></div>
                 </div>
             </div>
@@ -102,10 +102,8 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            // ### FIX: Ukryj/pokaż opcję dołączenia w zależności od stanu zalogowania
             ui.newUserSlot.style.display = sessionUsername ? 'none' : 'block';
             if (!sessionUsername) createRegistrationSlot();
-
 
             ui.userSlotsContainer.innerHTML = '';
             users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
@@ -122,42 +120,36 @@
 
                 let nameHTML = roleIcon + user.username;
                 let actionsHTML = '';
-                
-                if (user.username === sessionUsername && user.status === 'active') {
+                const isMySlot = user.username === sessionUsername;
+
+                if (isMySlot && isActive) {
                     nameHTML += ' (Ty)';
-                    actionsHTML += `<button class="action-button logout-button" title="Opuść (wyloguj się)">🚪</button>`;
-                }
-                
-                if (isModerator) {
-                     actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`;
+                    actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`;
+                } else if (isModerator && !isMySlot) {
+                    actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`;
                 }
 
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
 
-                // ### FIX: Poprawna logika kliknięć przywracająca prywatne rozmowy
                 const nameElement = header.querySelector('.user-name');
-                const isMySlot = user.username === sessionUsername;
-
-                if (isMySlot && user.status === 'active') {
+                if (isMySlot && isActive) {
                     nameElement.style.cursor = 'default';
-                } else if (!isMySlot && user.status === 'active') {
+                } else if (!isMySlot && isActive) {
                     nameElement.onclick = () => openPrivateChat(user.username);
                 } else if (user.status === 'inactive') {
                     nameElement.onclick = () => showLoginForm(slot, user.username);
                 }
-
-                const logoutBtn = header.querySelector('.logout-button');
-                if (logoutBtn) { logoutBtn.onclick = (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; }
                 
+                const selfActionBtn = header.querySelector('.self-action-button');
+                if(selfActionBtn) selfActionBtn.onclick = (e) => { e.stopPropagation(); showSelfActionMenu(slot); };
+
                 const removeBtn = header.querySelector('.remove-user-button');
                 if (removeBtn) {
                     removeBtn.onclick = (e) => {
                         e.stopPropagation();
-                        const userToRemove = removeBtn.dataset.user;
-                        if (confirm(`Czy na pewno chcesz TRWALE usunąć ${userToRemove}?`)) {
-                           socket.send(JSON.stringify({ type: 'remove_user', payload: { username: userToRemove } }));
-                           if(userToRemove === sessionUsername) resetSession();
+                        if (confirm(`Czy na pewno chcesz TRWALE usunąć ${removeBtn.dataset.user}?`)) {
+                           socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } }));
                         }
                     };
                 }
@@ -165,11 +157,34 @@
             });
         }
         
+        function removeActiveForms() {
+            document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f));
+            // Przywróć klikalność, którą mogliśmy usunąć
+            document.querySelectorAll('.user-slot').forEach(s => s.onclick = null);
+        }
+
+        function showSelfActionMenu(slot) {
+            removeActiveForms();
+            const menu = document.createElement('div');
+            menu.className = 'action-menu';
+            menu.innerHTML = `<button class="logout-btn">Wyloguj</button><button class="delete-btn">Usuń konto</button>`;
+            slot.appendChild(menu);
+
+            menu.querySelector('.logout-btn').onclick = () => {
+                socket.send(JSON.stringify({ type: 'leave' }));
+                resetSession();
+            };
+            menu.querySelector('.delete-btn').onclick = () => {
+                if (confirm('Czy na pewno chcesz TRWALE usunąć swoje konto? Tej akcji nie można cofnąć.')) {
+                    socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
+                }
+            };
+        }
+
         function showLoginForm(slot, targetUsername, isNewUser = false) {
-            document.querySelectorAll('.login-form-inline').forEach(f => f.parentElement.removeChild(f));
-            
+            removeActiveForms();
             const form = document.createElement('form');
-            form.className = 'login-form-inline';
+            form.className = 'form-inline';
             form.innerHTML = isNewUser
                 ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>`
                 : '';
@@ -192,7 +207,7 @@
         }
 
         function createRegistrationSlot() {
-            ui.newUserSlot.innerHTML = ''; // Wyczyść na wypadek ponownego renderowania
+            ui.newUserSlot.innerHTML = '';
             const slot = document.createElement('div');
             slot.className = 'user-slot';
             const header = document.createElement('div');
@@ -226,7 +241,7 @@
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    // RenderUsers zostanie wywołane przez user_update, które zawsze następuje
+                    // Pełne odświeżenie UI nastąpi po wiadomości 'user_update'
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
