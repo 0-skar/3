@@ -103,21 +103,19 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            // ### Poprawiona logika wyświetlania slotu dołączenia ###
-            const browserIdentity = localStorage.getItem('forumUsername');
-            const identityExistsOnServer = users.some(u => u.username === browserIdentity);
-
-            // Jeśli localStorage ma tożsamość, ale serwer jej nie zna (bo konto usunięto)
-            if (browserIdentity && !identityExistsOnServer) {
+            // ### Logika wyświetlania slotu dołączenia ###
+            let browserIdentity = localStorage.getItem('forumUsername');
+            if (browserIdentity && !users.some(u => u.username === browserIdentity)) {
                 localStorage.removeItem('forumUsername');
+                browserIdentity = null;
+            }
+            if (browserIdentity) {
+                ui.newUserSlot.style.display = 'none';
+                ui.newUserSlot.innerHTML = '';
+            } else {
                 ui.newUserSlot.style.display = 'block';
                 createRegistrationSlot();
-            } else if (sessionUsername) { // Jeśli jestem aktywnie zalogowany
-                ui.newUserSlot.style.display = 'none';
-            } else { // Jeśli nie jestem zalogowany, ale moje konto wciąż istnieje
-                ui.newUserSlot.style.display = 'none';
             }
-
 
             ui.userSlotsContainer.innerHTML = '';
             users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
@@ -152,7 +150,6 @@
 
                 const nameElement = header.querySelector('.user-name');
                 if (user.status === 'inactive') {
-                    // Każdy nieaktywny slot jest klikalny
                     nameElement.onclick = () => showLoginForm(slot, user.username);
                 } else if (!isMySession) {
                     nameElement.onclick = () => openPrivateChat(user.username);
