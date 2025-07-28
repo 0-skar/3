@@ -27,7 +27,7 @@
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
         .chat-windows { position: relative; flex-grow: 1; }
         #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
-        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
+        .sidebar { width: var-sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -45,7 +45,6 @@
         .user-slot.inactive { opacity: 0.6; }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
-        /* ### NOWOŚĆ: Styl dla szarej ikonki */
         .inactive-icon { filter: grayscale(100%); }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; }
@@ -87,6 +86,8 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
+        // ### ZMIANA: To jest teraz główne źródło prawdy o tożsamości przeglądarki
+        let storedUsername = localStorage.getItem('forumUsername');
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
@@ -104,11 +105,17 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            ui.newUserSlot.style.display = sessionUsername ? 'none' : 'block';
-            if (!sessionUsername) createRegistrationSlot();
+            // ### ZMIANA: Logika oparta o tożsamość przeglądarki, a nie sesję
+            ui.newUserSlot.style.display = storedUsername ? 'none' : 'block';
+            if (!storedUsername) createRegistrationSlot();
 
             ui.userSlotsContainer.innerHTML = '';
             users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
+                // Nie pokazuj wylogowanego użytkownika, jeśli jego tożsamość nie pasuje do tej z przeglądarki
+                if (user.username !== storedUsername && sessionUsername !== user.username && !storedUsername) {
+                   // To skomplikowane, ale chodzi o to, by nie pokazywać "bezpańskich" kont, gdy sam nie mam tożsamości
+                }
+
                 const slot = document.createElement('div');
                 slot.className = 'user-slot';
                 if (user.status === 'inactive') slot.classList.add('inactive');
@@ -116,7 +123,6 @@
                 const header = document.createElement('div');
                 header.className = 'user-slot-header';
                 
-                // ### ZMIANA: Logika ikonek
                 let roleIcon = '';
                 if (user.role === 'moderator') roleIcon = '👑 ';
                 else if (user.role === 'vip') roleIcon = '⭐ ';
@@ -127,12 +133,12 @@
 
                 let nameHTML = roleIcon + user.username;
                 let actionsHTML = '';
-                const isMySlot = user.username === sessionUsername;
+                const isMySlot = user.username === storedUsername;
 
                 if (isMySlot && isActive) {
                     nameHTML += ' (Ty)';
                     actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`;
-                } else if (isModerator && !isMySlot) {
+                } else if (isModerator && user.username !== sessionUsername) {
                     actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`;
                 }
 
@@ -144,7 +150,7 @@
                     nameElement.style.cursor = 'default';
                 } else if (!isMySlot && isActive) {
                     nameElement.onclick = () => openPrivateChat(user.username);
-                } else if (user.status === 'inactive') {
+                } else if (user.status === 'inactive' && isMySlot) {
                     nameElement.onclick = () => showLoginForm(slot, user.username);
                 }
                 
@@ -183,6 +189,10 @@
             menu.querySelector('.delete-btn').onclick = () => {
                 if (confirm('Czy na pewno chcesz TRWALE usunąć swoje konto? Tej akcji nie można cofnąć.')) {
                     socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
+                    // ### ZMIANA: Kluczowy moment - zapominamy tożsamość przeglądarki
+                    localStorage.removeItem('forumUsername');
+                    storedUsername = null;
+                    resetSession();
                 }
             };
         }
@@ -192,7 +202,6 @@
             const form = document.createElement('form');
             form.className = 'form-inline';
             
-            // ### ZMIANA: Kontekstowy placeholder
             const passwordPlaceholder = isNewUser
                 ? "Wymyśl hasło (puste = gość)"
                 : "Podaj hasło";
@@ -253,6 +262,11 @@
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
+                    // ### ZMIANA: Zapisujemy tożsamość w przeglądarce
+                    if (!storedUsername) {
+                        storedUsername = sessionUsername;
+                        localStorage.setItem('forumUsername', storedUsername);
+                    }
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
