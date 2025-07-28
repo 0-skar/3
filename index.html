@@ -86,7 +86,6 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
-        let storedUsername = localStorage.getItem('forumUsername');
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
@@ -104,12 +103,24 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            ui.newUserSlot.style.display = users.some(u => u.username === storedUsername) ? 'none' : 'block';
-            if (!users.some(u => u.username === storedUsername)) {
+            // ### FIX: Poprawiona logika wyświetlania slotu dołączenia
+            const browserIdentity = localStorage.getItem('forumUsername');
+            const identityExistsOnServer = users.some(u => u.username === browserIdentity);
+
+            if (browserIdentity && !identityExistsOnServer) {
+                // Konto zostało usunięte - zapomnij tożsamość
                 localStorage.removeItem('forumUsername');
-                storedUsername = null;
+                ui.newUserSlot.style.display = 'block';
+                createRegistrationSlot();
+            } else if (browserIdentity) {
+                // Jestem zalogowany lub wylogowany, ale mam tożsamość - ukryj slot
+                ui.newUserSlot.style.display = 'none';
+            } else {
+                // Nie mam żadnej tożsamości - pokaż slot
+                ui.newUserSlot.style.display = 'block';
                 createRegistrationSlot();
             }
+
 
             ui.userSlotsContainer.innerHTML = '';
             users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
@@ -142,7 +153,6 @@
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
 
-                // ### ZMIANA: Uproszczona logika kliknięć
                 const nameElement = header.querySelector('.user-name');
                 if (user.status === 'inactive') {
                     nameElement.onclick = () => showLoginForm(slot, user.username);
@@ -251,8 +261,7 @@
                 else if (data.type === 'history_cleared') { document.getElementById('messages-public').innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    storedUsername = data.payload.username;
-                    localStorage.setItem('forumUsername', storedUsername);
+                    localStorage.setItem('forumUsername', sessionUsername);
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
