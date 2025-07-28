@@ -45,6 +45,8 @@
         .user-slot.inactive { opacity: 0.6; }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
+        /* ### NOWOŚĆ: Styl dla szarej ikonki */
+        .inactive-icon { filter: grayscale(100%); }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; }
         .form-inline { margin-top: 10px; display: flex; flex-direction: column; }
@@ -114,9 +116,14 @@
                 const header = document.createElement('div');
                 header.className = 'user-slot-header';
                 
+                // ### ZMIANA: Logika ikonek
                 let roleIcon = '';
                 if (user.role === 'moderator') roleIcon = '👑 ';
                 else if (user.role === 'vip') roleIcon = '⭐ ';
+
+                if (user.status === 'inactive' && roleIcon) {
+                    roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `;
+                }
 
                 let nameHTML = roleIcon + user.username;
                 let actionsHTML = '';
@@ -159,7 +166,6 @@
         
         function removeActiveForms() {
             document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f));
-            // Przywróć klikalność, którą mogliśmy usunąć
             document.querySelectorAll('.user-slot').forEach(s => s.onclick = null);
         }
 
@@ -185,10 +191,16 @@
             removeActiveForms();
             const form = document.createElement('form');
             form.className = 'form-inline';
+            
+            // ### ZMIANA: Kontekstowy placeholder
+            const passwordPlaceholder = isNewUser
+                ? "Wymyśl hasło (puste = gość)"
+                : "Podaj hasło";
+
             form.innerHTML = isNewUser
                 ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>`
                 : '';
-            form.innerHTML += `<input type="password" name="password" placeholder="Hasło (puste = gość)"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
+            form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
             
             form.onclick = (e) => e.stopPropagation();
             if(slot.querySelector('.user-name')) slot.querySelector('.user-name').style.cursor = 'default';
@@ -241,7 +253,6 @@
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    // Pełne odświeżenie UI nastąpi po wiadomości 'user_update'
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
