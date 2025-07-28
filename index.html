@@ -94,7 +94,7 @@
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
 
         function renderUsers(users) {
-            allUsers = users;
+            allUsers = users; // Zawsze aktualizuj lokalną kopię listy użytkowników
             const currentUser = users.find(u => u.username === sessionUsername);
             const isActive = currentUser && currentUser.status === 'active';
             isModerator = isActive && currentUser.role === 'moderator';
@@ -104,8 +104,29 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            ui.newUserSlot.style.display = storedUsername ? 'none' : 'block';
-            if (!storedUsername) createRegistrationSlot();
+            // --- ZMIANA: Ulepszona i bardziej niezawodna logika wyświetlania przycisku "Dołącz" ---
+            // Krok 1: Sprawdź, czy tożsamość przeglądarki jest nadal ważna
+            if (storedUsername) {
+                const userExistsOnServer = users.some(u => u.username === storedUsername);
+                if (!userExistsOnServer) {
+                    // Jeśli serwer nie zna naszego użytkownika, to znaczy, że nasza tożsamość jest nieaktualna.
+                    // Zapominamy ją.
+                    localStorage.removeItem('forumUsername');
+                    storedUsername = null;
+                }
+            }
+
+            // Krok 2: Na podstawie (ewentualnie zaktualizowanej) tożsamości, zdecyduj co pokazać.
+            if (storedUsername) {
+                // Jeśli mamy ważną tożsamość, ukryj opcję dołączenia.
+                ui.newUserSlot.style.display = 'none';
+                ui.newUserSlot.innerHTML = '';
+            } else {
+                // Jeśli nie mamy tożsamości (bo jesteśmy nowi, lub ją usunęliśmy), pokaż opcję dołączenia.
+                ui.newUserSlot.style.display = 'block';
+                createRegistrationSlot();
+            }
+            // --- Koniec zmiany ---
 
             ui.userSlotsContainer.innerHTML = '';
             const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
@@ -162,7 +183,6 @@
                 if (removeBtn) {
                     removeBtn.onclick = (e) => {
                         e.stopPropagation();
-                        // ZMIANA: Usunięto dymek z potwierdzeniem
                         socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } }));
                     };
                 }
@@ -196,12 +216,12 @@
             }
 
             menu.querySelector('.delete-btn').onclick = () => {
-                // ZMIANA: Usunięto dymek z potwierdzeniem
                 socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
                 localStorage.removeItem('forumUsername');
                 storedUsername = null;
-                resetSession();
                 removeActiveForms();
+                // Nie ma potrzeby wywoływać resetSession() tutaj, 
+                // serwer wyśle aktualizację, która przerysuje UI poprawnie.
             };
         }
 
@@ -212,7 +232,6 @@
             
             const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło";
 
-            // ZMIANA: Dodano `autocomplete="off"` i `autocomplete="new-password"`
             form.innerHTML = isNewUser
                 ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">`
                 : '';
@@ -254,7 +273,8 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            // Po prostu przerysuj listę użytkowników. Logika w renderUsers sama zdecyduje, czy pokazać przycisk logowania.
+            // Samo wywołanie renderUsers z obecnym stanem `allUsers` wystarczy,
+            // logika wewnątrz funkcji zajmie się resztą.
             renderUsers(allUsers);
         }
 
@@ -280,7 +300,7 @@
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
-                    renderUsers(allUsers); // Re-render to show login forms again
+                    renderUsers(allUsers); 
                 }
             };
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
@@ -296,4 +316,4 @@
         connectWebSocket();
     </script>
 </body>
-</html>
+</html>```
