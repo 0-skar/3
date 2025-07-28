@@ -121,47 +121,55 @@
                 if (user.username === sessionUsername && user.status === 'active') {
                     nameHTML += ' (Ty)';
                     slot.classList.add('no-interaction');
-                    actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
+                    // Przycisk do wylogowania (nie usuwa konta z hasłem)
+                    actionsHTML += `<button class="action-button logout-button" title="Opuść (wyloguj się)">🚪</button>`;
                 }
-                // Slot innego aktywnego użytkownika
-                else if (user.status === 'active') {
-                    if (isModerator) {
-                        actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
-                    }
+                
+                // Przycisk usuwania (widoczny dla moderatora na wszystkich slotach)
+                if (isModerator) {
+                     actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`;
                 }
+
 
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
 
                 // Logika kliknięć
                 const nameElement = header.querySelector('.user-name');
-                const isMyInactiveSlot = user.username === sessionUsername && user.status === 'inactive';
+                const isMySlot = user.username === sessionUsername;
                 
-                if (isMyInactiveSlot || user.status === 'inactive') {
-                    // Kliknięcie na nieaktywny slot (mój lub kogoś innego)
-                    nameElement.onclick = () => showLoginForm(slot, user.username);
-                } else if (user.username !== sessionUsername && user.status === 'active') {
-                    // Kliknięcie na aktywnego użytkownika (otwiera priv)
+                if (isMySlot && user.status === 'active') {
+                     nameElement.style.cursor = 'default';
+                } else if (!isMySlot && user.status === 'active') {
                     nameElement.onclick = () => openPrivateChat(user.username);
+                } else if (user.status === 'inactive') {
+                    nameElement.onclick = () => showLoginForm(slot, user.username);
                 }
 
-                const leaveBtn = header.querySelector('.leave-button');
-                if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; }
+                const logoutBtn = header.querySelector('.logout-button');
+                if (logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; }
                 
                 const removeBtn = header.querySelector('.remove-user-button');
-                if (removeBtn) { removeBtn.onclick = () => { if (confirm(`Czy na pewno chcesz usunąć ${removeBtn.dataset.user}?`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
+                if (removeBtn) {
+                    removeBtn.onclick = () => {
+                        const userToRemove = removeBtn.dataset.user;
+                        if (confirm(`Czy na pewno chcesz TRWALE usunąć ${userToRemove}? Tej akcji nie można cofnąć.`)) {
+                           socket.send(JSON.stringify({ type: 'remove_user', payload: { username: userToRemove } }));
+                           if(userToRemove === sessionUsername) resetSession();
+                        }
+                    };
+                }
 
                 ui.userSlotsContainer.appendChild(slot);
             });
 
-            // Jeśli nie jestem zalogowany, pokaż slot do rejestracji
             if (!sessionUsername) {
                 createRegistrationSlot();
             }
         }
         
         function showLoginForm(slot, targetUsername, isNewUser = false) {
-            document.querySelectorAll('.login-form-inline').forEach(f => f.remove());
+            document.querySelectorAll('.login-form-inline').forEach(f => f.parentElement.removeChild(f));
             slot.querySelector('.user-name').style.cursor = 'default';
 
             const form = document.createElement('form');
@@ -169,10 +177,10 @@
             form.innerHTML = isNewUser
                 ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>`
                 : '';
-            form.innerHTML += `<input type="password" name="password" placeholder="Hasło (puste = gość)"><button type="submit">${isNewUser ? 'Dołącz' : 'Obudź się / Zaloguj'}</button>`;
+            form.innerHTML += `<input type="password" name="password" placeholder="Hasło (puste = gość)"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
             
-            form.onclick = (e) => e.stopPropagation(); // Zapobiegaj znikaniu formularza
-            slot.onclick = null; // Zdejmij handler ze slota
+            form.onclick = (e) => e.stopPropagation();
+            slot.onclick = null; 
 
             form.onsubmit = (e) => {
                 e.preventDefault();
@@ -204,8 +212,7 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            // Nie czyścimy localStorage, aby przeglądarka pamiętała nick
-            renderUsers(allUsers); // Odśwież UI, aby pokazać stan "wylogowany"
+            renderUsers(allUsers);
         }
 
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `${targetUser}`); switchChat(targetUser); }
@@ -222,11 +229,15 @@
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    // Pełne odświeżenie UI nastąpi po wiadomości 'user_update', która zawsze jest wysyłana po dołączeniu
+                    // ### FIX: Natychmiastowe odblokowanie UI po zalogowaniu.
+                    ui.input.disabled = false;
+                    ui.sendButton.disabled = false;
+                    ui.input.placeholder = "Wpisz swoją wiadomość...";
+                    // Pełne odświeżenie (renderUsers) i tak nastąpi po otrzymaniu 'user_update'.
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
-                    renderUsers(allUsers); // Przywróć sloty do stanu pierwotnego
+                    renderUsers(allUsers);
                 }
             };
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
