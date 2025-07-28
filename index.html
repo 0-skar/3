@@ -44,7 +44,7 @@
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot.inactive { opacity: 0.6; }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
-        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .inactive-icon { filter: grayscale(100%); }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button:hover { color: #ff4d4d; }
@@ -86,7 +86,6 @@
     <script>
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
-        // ### ZMIANA: To jest teraz główne źródło prawdy o tożsamości przeglądarki
         let storedUsername = localStorage.getItem('forumUsername');
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
@@ -105,16 +104,19 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            // ### ZMIANA: Logika oparta o tożsamość przeglądarki, a nie sesję
             ui.newUserSlot.style.display = storedUsername ? 'none' : 'block';
             if (!storedUsername) createRegistrationSlot();
 
             ui.userSlotsContainer.innerHTML = '';
-            users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
-                // Nie pokazuj wylogowanego użytkownika, jeśli jego tożsamość nie pasuje do tej z przeglądarki
-                if (user.username !== storedUsername && sessionUsername !== user.username && !storedUsername) {
-                   // To skomplikowane, ale chodzi o to, by nie pokazywać "bezpańskich" kont, gdy sam nie mam tożsamości
-                }
+            const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
+            users.sort((a, b) => {
+                const roleA = roleOrder[a.role] ?? 3;
+                const roleB = roleOrder[b.role] ?? 3;
+                if (roleA !== roleB) return roleA - roleB;
+                return a.username.localeCompare(b.username);
+            }).forEach(user => {
+                const isMyStoredIdentity = user.username === storedUsername;
+                if (!isMyStoredIdentity && user.status === 'inactive') return;
 
                 const slot = document.createElement('div');
                 slot.className = 'user-slot';
@@ -133,9 +135,8 @@
 
                 let nameHTML = roleIcon + user.username;
                 let actionsHTML = '';
-                const isMySlot = user.username === storedUsername;
 
-                if (isMySlot && isActive) {
+                if (isMyStoredIdentity && isActive) {
                     nameHTML += ' (Ty)';
                     actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`;
                 } else if (isModerator && user.username !== sessionUsername) {
@@ -146,16 +147,16 @@
                 slot.appendChild(header);
 
                 const nameElement = header.querySelector('.user-name');
-                if (isMySlot && isActive) {
-                    nameElement.style.cursor = 'default';
-                } else if (!isMySlot && isActive) {
+                if (isActive && !isMyStoredIdentity) {
                     nameElement.onclick = () => openPrivateChat(user.username);
-                } else if (user.status === 'inactive' && isMySlot) {
-                    nameElement.onclick = () => showLoginForm(slot, user.username);
+                } else if (user.status === 'inactive' && isMyStoredIdentity) {
+                    nameElement.onclick = () => showLoginForm(slot, user.username, false);
+                } else {
+                    nameElement.style.cursor = 'default';
                 }
                 
                 const selfActionBtn = header.querySelector('.self-action-button');
-                if(selfActionBtn) selfActionBtn.onclick = (e) => { e.stopPropagation(); showSelfActionMenu(slot); };
+                if(selfActionBtn) selfActionBtn.onclick = (e) => { e.stopPropagation(); showSelfActionMenu(slot, user.role !== 'user'); };
 
                 const removeBtn = header.querySelector('.remove-user-button');
                 if (removeBtn) {
@@ -172,24 +173,33 @@
         
         function removeActiveForms() {
             document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f));
-            document.querySelectorAll('.user-slot').forEach(s => s.onclick = null);
         }
 
-        function showSelfActionMenu(slot) {
+        function showSelfActionMenu(slot, isPermanentAccount) {
             removeActiveForms();
             const menu = document.createElement('div');
             menu.className = 'action-menu';
-            menu.innerHTML = `<button class="logout-btn">Wyloguj</button><button class="delete-btn">Usuń konto</button>`;
+            
+            let menuHTML = '';
+            if (isPermanentAccount) {
+                 menuHTML += `<button class="logout-btn">Wyloguj</button>`;
+            }
+            menuHTML += `<button class="delete-btn">Usuń konto</button>`;
+            menu.innerHTML = menuHTML;
             slot.appendChild(menu);
 
-            menu.querySelector('.logout-btn').onclick = () => {
-                socket.send(JSON.stringify({ type: 'leave' }));
-                resetSession();
-            };
+            const logoutBtn = menu.querySelector('.logout-btn');
+            if(logoutBtn) {
+                logoutBtn.onclick = () => {
+                    socket.send(JSON.stringify({ type: 'leave' }));
+                    resetSession();
+                };
+            }
+
             menu.querySelector('.delete-btn').onclick = () => {
-                if (confirm('Czy na pewno chcesz TRWALE usunąć swoje konto? Tej akcji nie można cofnąć.')) {
+                const confirmMsg = 'Czy na pewno chcesz TRWALE usunąć swoje konto? Tej akcji nie można cofnąć.';
+                if (confirm(confirmMsg)) {
                     socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
-                    // ### ZMIANA: Kluczowy moment - zapominamy tożsamość przeglądarki
                     localStorage.removeItem('forumUsername');
                     storedUsername = null;
                     resetSession();
@@ -202,18 +212,15 @@
             const form = document.createElement('form');
             form.className = 'form-inline';
             
-            const passwordPlaceholder = isNewUser
-                ? "Wymyśl hasło (puste = gość)"
-                : "Podaj hasło";
+            const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło";
 
-            form.innerHTML = isNewUser
-                ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>`
-                : '';
+            form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>` : '';
             form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
             
             form.onclick = (e) => e.stopPropagation();
-            if(slot.querySelector('.user-name')) slot.querySelector('.user-name').style.cursor = 'default';
-            if(!isNewUser) slot.onclick = null; 
+            
+            const nameElement = slot.querySelector('.user-name');
+            if (nameElement) nameElement.style.cursor = 'default';
 
             form.onsubmit = (e) => {
                 e.preventDefault();
@@ -221,10 +228,11 @@
                 const pword = form.querySelector('[name="password"]').value.trim();
                 if (uname) {
                     socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } }));
+                    removeActiveForms();
                 }
             };
             slot.appendChild(form);
-            form.querySelector('input[type="password"]').focus();
+            form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus();
         }
 
         function createRegistrationSlot() {
@@ -245,7 +253,11 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            renderUsers(allUsers);
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                 socket.send(create_user_list_payload());
+            } else {
+                 renderUsers(allUsers);
+            }
         }
 
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
@@ -262,15 +274,15 @@
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    // ### ZMIANA: Zapisujemy tożsamość w przeglądarce
-                    if (!storedUsername) {
+                    if (!storedUsername || storedUsername !== sessionUsername) {
                         storedUsername = sessionUsername;
                         localStorage.setItem('forumUsername', storedUsername);
                     }
+                    removeActiveForms();
                 }
                 else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
-                    renderUsers(allUsers);
+                    renderUsers(allUsers); // Re-render to show login forms again
                 }
             };
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
