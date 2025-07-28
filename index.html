@@ -13,32 +13,44 @@
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
             --header-height: 52px;
         }
+        @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
+        
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
+        .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
+        .chat-tabs { height: var(--header-height); box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 0 5px; flex-shrink: 0; display: flex; align-items: center; }
+        .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
+        .user-slots-area h3 { margin: 0 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); padding-top: 10px; }
+        .header-left-panel { display: flex; align-items: center; gap: 20px; }
+        #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
-        .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
-        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
-        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
-        .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
-        #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
-        .user-slots-area { padding: 10px; flex-grow: 1; overflow-y: auto; }
-        .user-slots-area h3 { margin: 0 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
-        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; }
-        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; padding-bottom: 8px; }
+        .chat-windows { position: relative; flex-grow: 1; }
         #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
+        .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
+        .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
+        #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
+        #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+        .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
+        .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
+        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
+        .user-message { color: var(--text-color); }
+        .private-message { color: var(--private-msg-color); font-style: italic; }
+        .user-message .username-color { color: var(--accent-color); font-weight: bold; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); cursor: pointer; }
-        .user-slot.no-click { cursor: default; }
+        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
+        .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
+        .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot.inactive { opacity: 0.6; }
+        .user-slot.no-interaction .user-name { cursor: default; }
         .user-slot-header { display: flex; align-items: center; width: 100%; }
-        .user-name { font-weight: bold; flex-grow: 1; }
-        .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; }
-        .login-form { margin-top: 10px; display: flex; flex-direction: column; }
-        .login-form input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; }
-        .login-form button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; }
-        #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+        .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; }
+        .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
+        .action-button:hover { color: #ff4d4d; }
+        .login-form-inline { margin-top: 10px; display: flex; flex-direction: column; }
+        .login-form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
+        .login-form-inline button { padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -46,19 +58,20 @@
         <div class="main-content">
             <div class="chat-area">
                 <div class="chat-header" id="chat-header">
-                    <span id="header-title">Forum</span>
+                    <div class="header-left-panel">
+                        <span id="header-title">Forum</span>
+                        <button id="clear-history-btn">Wyczyść Czat</button>
+                    </div>
                     <button id="sidebar-toggle"><</button>
                 </div>
-                <ul id="messages" class="messages"></ul>
-                <div style="padding:10px;"><button id="clear-history-btn">Wyczyść Czat</button></div>
+                <div class="chat-windows" id="chat-windows"></div>
             </div>
+            
             <div class="sidebar" id="sidebar">
+                <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
                     <h3>Użytkownicy</h3>
                     <div id="user-slots-container"></div>
-                    <div id="new-user-slot" class="user-slot">
-                        <div class="user-slot-header"><span class="user-name" style="color: var(--notification-color);">+ Dołącz jako nowy użytkownik</span></div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -69,30 +82,24 @@
     </div>
     
     <script>
-        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), messages: document.getElementById('messages'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
-        let socket, sessionUsername = null, isModerator = false, allUsers = [];
+        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'), chatWindows: document.getElementById('chat-windows'), chatTabs: document.getElementById('chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), headerTitle: document.getElementById('header-title'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn') };
+        let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`; const historyUrl = `https://${hfSpaceUrl}/history`;
 
-        function addMessage(data) {
-            const item = document.createElement('li');
-            item.className = 'system-message';
-            item.textContent = data.message;
-            if (data.username !== "System") {
-                item.innerHTML = `<strong style="color:var(--accent-color)">${data.username}</strong>: ${data.message}`;
-            }
-            ui.messages.appendChild(item);
-            ui.messages.scrollTop = ui.messages.scrollHeight;
-        }
+        function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => { if (activeChat === id && id !== 'public') { switchChat('public'); } else { switchChat(id); } }; ui.chatTabs.appendChild(tabButton); }
+        function switchChat(id) { activeChat = id; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); document.getElementById(`messages-${id}`).style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(`tab-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } }
+        function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
 
         function renderUsers(users) {
             allUsers = users;
             const currentUser = users.find(u => u.username === sessionUsername);
-            isModerator = currentUser ? currentUser.role === 'moderator' && currentUser.status === 'active' : false;
+            const isActive = currentUser && currentUser.status === 'active';
+            isModerator = isActive && currentUser.role === 'moderator';
 
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
-            ui.input.disabled = !currentUser || currentUser.status !== 'active';
-            ui.sendButton.disabled = !currentUser || currentUser.status !== 'active';
-            ui.input.placeholder = (!currentUser || currentUser.status !== 'active') ? "Zaloguj się, aby rozmawiać..." : "Wpisz wiadomość...";
+            ui.input.disabled = !isActive;
+            ui.sendButton.disabled = !isActive;
+            ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
 
             ui.userSlotsContainer.innerHTML = '';
             users.sort((a,b) => a.username.localeCompare(b.username)).forEach(user => {
@@ -100,13 +107,6 @@
                 slot.className = 'user-slot';
                 if (user.status === 'inactive') slot.classList.add('inactive');
                 
-                // Nie pozwól na klikanie własnego, aktywnego slota
-                if (user.username === sessionUsername && user.status === 'active') {
-                    slot.classList.add('no-click');
-                } else {
-                    slot.onclick = () => showLoginForm(slot, user.username, false);
-                }
-
                 const header = document.createElement('div');
                 header.className = 'user-slot-header';
                 
@@ -114,69 +114,102 @@
                 if (user.role === 'moderator') roleIcon = '👑 ';
                 else if (user.role === 'vip') roleIcon = '⭐ ';
 
-                let nameHTML = `<span class="user-name">${roleIcon}${user.username}</span>`;
+                let nameHTML = roleIcon + user.username;
                 let actionsHTML = '';
-
-                if (user.username === sessionUsername && user.status === 'active') {
-                    nameHTML = `<span class="user-name">${roleIcon}${user.username} (Ty)</span>`;
-                    actionsHTML += `<button class="action-button" title="Opuść">❌</button>`;
-                } else if (isModerator) {
-                    actionsHTML += `<button class="action-button" title="Usuń użytkownika">🗑️</button>`;
-                }
-
-                header.innerHTML = nameHTML + actionsHTML;
                 
-                if (header.querySelector('[title="Opuść"]')) {
-                    header.querySelector('[title="Opuść"]').onclick = (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'leave' })); resetSession(); };
+                // Mój slot (aktywny)
+                if (user.username === sessionUsername && user.status === 'active') {
+                    nameHTML += ' (Ty)';
+                    slot.classList.add('no-interaction');
+                    actionsHTML += `<button class="action-button leave-button" title="Opuść forum">×</button>`;
                 }
-                if (header.querySelector('[title="Usuń użytkownika"]')) {
-                    header.querySelector('[title="Usuń użytkownika"]').onclick = (e) => { e.stopPropagation(); if (confirm(`Czy na pewno chcesz usunąć ${user.username}?`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: user.username } })); };
+                // Slot innego aktywnego użytkownika
+                else if (user.status === 'active') {
+                    if (isModerator) {
+                        actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
+                    }
                 }
 
+                header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
+
+                // Logika kliknięć
+                const nameElement = header.querySelector('.user-name');
+                const isMyInactiveSlot = user.username === sessionUsername && user.status === 'inactive';
+                
+                if (isMyInactiveSlot || user.status === 'inactive') {
+                    // Kliknięcie na nieaktywny slot (mój lub kogoś innego)
+                    nameElement.onclick = () => showLoginForm(slot, user.username);
+                } else if (user.username !== sessionUsername && user.status === 'active') {
+                    // Kliknięcie na aktywnego użytkownika (otwiera priv)
+                    nameElement.onclick = () => openPrivateChat(user.username);
+                }
+
+                const leaveBtn = header.querySelector('.leave-button');
+                if (leaveBtn) { leaveBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; }
+                
+                const removeBtn = header.querySelector('.remove-user-button');
+                if (removeBtn) { removeBtn.onclick = () => { if (confirm(`Czy na pewno chcesz usunąć ${removeBtn.dataset.user}?`)) socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); }; }
+
                 ui.userSlotsContainer.appendChild(slot);
             });
+
+            // Jeśli nie jestem zalogowany, pokaż slot do rejestracji
+            if (!sessionUsername) {
+                createRegistrationSlot();
+            }
+        }
+        
+        function showLoginForm(slot, targetUsername, isNewUser = false) {
+            document.querySelectorAll('.login-form-inline').forEach(f => f.remove());
+            slot.querySelector('.user-name').style.cursor = 'default';
+
+            const form = document.createElement('form');
+            form.className = 'login-form-inline';
+            form.innerHTML = isNewUser
+                ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>`
+                : '';
+            form.innerHTML += `<input type="password" name="password" placeholder="Hasło (puste = gość)"><button type="submit">${isNewUser ? 'Dołącz' : 'Obudź się / Zaloguj'}</button>`;
+            
+            form.onclick = (e) => e.stopPropagation(); // Zapobiegaj znikaniu formularza
+            slot.onclick = null; // Zdejmij handler ze slota
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername;
+                const pword = form.querySelector('[name="password"]').value.trim();
+                if (uname) {
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } }));
+                }
+            };
+            slot.appendChild(form);
+            form.querySelector('input[type="password"]').focus();
         }
 
-        function showLoginForm(slot, username = '', isNewUser = false) {
-            // Zapobiegaj wielokrotnemu otwieraniu formularza
-            if (slot.querySelector('.login-form')) return;
-            // Usuń inne otwarte formularze
-            document.querySelectorAll('.login-form').forEach(form => form.parentElement.innerHTML = form.parentElement.dataset.originalHtml);
-
-            slot.dataset.originalHtml = slot.innerHTML;
-            slot.classList.add('no-click');
-            slot.onclick = null;
-            
-            const form = document.createElement('form');
-            form.className = 'login-form';
-            form.innerHTML = 
-                (isNewUser ? `<input type="text" name="username" placeholder="Nazwa użytkownika" required>` : '') +
-                `<input type="password" name="password" placeholder="Hasło (puste = gość)">` +
-                `<button type="submit">${isNewUser ? "Dołącz" : "Zaloguj"}</button>`;
-            
-            form.onsubmit = e => {
-                e.preventDefault();
-                const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : username;
-                const pword = form.querySelector('[name="password"]').value;
-                if (!uname) return;
-                socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } }));
+        function createRegistrationSlot() {
+            const slot = document.createElement('div');
+            slot.className = 'user-slot';
+            slot.id = 'join-slot';
+            const header = document.createElement('div');
+            header.className = 'user-slot-header';
+            header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>';
+            slot.appendChild(header);
+            header.onclick = () => {
+                header.style.display = 'none';
+                showLoginForm(slot, '', true);
             };
-            
-            // W przypadku nowego usera, formularz zastępuje zawartość. W przypadku logowania, jest dodawany.
-            if(isNewUser) slot.innerHTML = '';
-            slot.appendChild(form);
-            form.querySelector('[name="password"]').focus();
+            ui.userSlotsContainer.appendChild(slot);
         }
 
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            localStorage.removeItem('forumUsername');
-            renderUsers(allUsers);
+            // Nie czyścimy localStorage, aby przeglądarka pamiętała nick
+            renderUsers(allUsers); // Odśwież UI, aby pokazać stan "wylogowany"
         }
 
-        async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(addMessage); } catch (e) { console.error(e); } }
+        function openPrivateChat(targetUser) { createChatWindow(targetUser, `${targetUser}`); switchChat(targetUser); }
+        async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
@@ -184,27 +217,28 @@
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'user_update') { renderUsers(data.payload.users); }
-                else if (data.type === 'chat_message') { addMessage(data.payload); }
-                else if (data.type === 'history_cleared') { ui.messages.innerHTML = ''; addMessage({username: 'System', message: 'Historia czatu została wyczyszczona.'}) }
+                else if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
+                else if (data.type === 'private_message') { const sender = data.payload.sender; const chatPartner = sender === sessionUsername ? data.payload.recipient : sender; createChatWindow(chatPartner, `${chatPartner}`); addMessage({ ...data.payload, isPrivate: true }, chatPartner); if (activeChat !== chatPartner) { const tab = document.getElementById(`tab-${chatPartner}`); if(tab) tab.classList.add('has-unread'); } }
+                else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') {
                     sessionUsername = data.payload.username;
-                    localStorage.setItem('forumUsername', sessionUsername);
-                    // Pełne renderowanie nastąpi po otrzymaniu 'user_update'
+                    // Pełne odświeżenie UI nastąpi po wiadomości 'user_update', która zawsze jest wysyłana po dołączeniu
                 }
-                 else if (data.type === 'join_failed') {
+                else if (data.type === 'join_failed') {
                     alert(`Logowanie nieudane: ${data.payload.reason}`);
-                    renderUsers(allUsers); // Odśwież UI, aby usunąć otwarte formularze
+                    renderUsers(allUsers); // Przywróć sloty do stanu pierwotnego
                 }
             };
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
-            socket.onerror = () => { resetSession(); }
+            socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
         }
 
-        ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message) return; socket.send(JSON.stringify({ type: 'chat_message', payload: { message } })); ui.input.value = ''; });
-        ui.sidebarToggle.addEventListener('click', () => ui.sidebar.classList.toggle('collapsed'));
-        ui.clearHistoryBtn.addEventListener('click', () => socket.send(JSON.stringify({ type: 'clear_history' })));
-        ui.newUserSlot.onclick = () => showLoginForm(ui.newUserSlot, '', true);
+        ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); if (type === 'private_message') addMessage({ username: sessionUsername, message, isPrivate: true }, activeChat); ui.input.value = ''; });
+        ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
+        ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
 
+        createChatWindow('public', 'Czat Publiczny');
+        switchChat('public');
         connectWebSocket();
     </script>
 </body>
