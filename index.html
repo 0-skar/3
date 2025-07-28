@@ -162,9 +162,8 @@
                 if (removeBtn) {
                     removeBtn.onclick = (e) => {
                         e.stopPropagation();
-                        if (confirm(`Czy na pewno chcesz TRWALE usunąć ${removeBtn.dataset.user}?`)) {
-                           socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } }));
-                        }
+                        // ZMIANA: Usunięto dymek z potwierdzeniem
+                        socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } }));
                     };
                 }
                 ui.userSlotsContainer.appendChild(slot);
@@ -197,13 +196,12 @@
             }
 
             menu.querySelector('.delete-btn').onclick = () => {
-                const confirmMsg = 'Czy na pewno chcesz TRWALE usunąć swoje konto? Tej akcji nie można cofnąć.';
-                if (confirm(confirmMsg)) {
-                    socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
-                    localStorage.removeItem('forumUsername');
-                    storedUsername = null;
-                    resetSession();
-                }
+                // ZMIANA: Usunięto dymek z potwierdzeniem
+                socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } }));
+                localStorage.removeItem('forumUsername');
+                storedUsername = null;
+                resetSession();
+                removeActiveForms();
             };
         }
 
@@ -214,8 +212,11 @@
             
             const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło";
 
-            form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>` : '';
-            form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
+            // ZMIANA: Dodano `autocomplete="off"` i `autocomplete="new-password"`
+            form.innerHTML = isNewUser
+                ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">`
+                : '';
+            form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
             
             form.onclick = (e) => e.stopPropagation();
             
@@ -253,11 +254,8 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                 socket.send(create_user_list_payload());
-            } else {
-                 renderUsers(allUsers);
-            }
+            // Po prostu przerysuj listę użytkowników. Logika w renderUsers sama zdecyduje, czy pokazać przycisk logowania.
+            renderUsers(allUsers);
         }
 
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
