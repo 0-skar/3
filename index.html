@@ -70,7 +70,7 @@
             
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
-                <div class="user-slots-area">
+                <div class.user-slots-area">
                     <h3>Użytkownicy</h3>
                     <div id="user-slots-container"></div>
                     <div id="new-user-slot"></div>
@@ -112,7 +112,7 @@
                 }
             }
 
-            if (storedUsername) {
+            if (storedUsername && isActive) { // Poprawka: ukryj slot "Dołącz", tylko jeśli jesteśmy aktywni
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
             } else {
@@ -158,15 +158,21 @@
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
 
-                // --- POPRAWKA ---
-                // Poniższy blok logiki został uproszczony, aby umożliwić
-                // logowanie na dowolne nieaktywne konto.
+                // --- POPRAWKA BEZPIECZEŃSTWA ---
+                // Poniższy blok logiki został zmieniony, aby zablokować logowanie
+                // na inne konta, gdy użytkownik jest już zalogowany.
                 const nameElement = header.querySelector('.user-name');
                 if (user.status === 'inactive') {
-                    // JEŚLI UŻYTKOWNIK JEST NIEAKTYWNY: kliknięcie zawsze pokaże formularz logowania.
-                    nameElement.onclick = () => showLoginForm(slot, user.username, false);
+                    // Jeśli użytkownik jest nieaktywny...
+                    if (!isActive) {
+                        // ...i ja NIE JESTEM zalogowany, pozwól mi kliknąć, by się zalogować.
+                        nameElement.onclick = () => showLoginForm(slot, user.username, false);
+                    } else {
+                        // ...a ja JESTEM zalogowany, zablokuj możliwość kliknięcia.
+                        nameElement.style.cursor = 'default';
+                    }
                 } else if (isActive && user.username !== sessionUsername) {
-                    // JEŚLI JEST AKTYWNY (i nie jest mną): kliknięcie otwiera czat prywatny.
+                    // Jeśli użytkownik jest aktywny (i nie jest mną), pozwól na czat prywatny.
                     nameElement.onclick = () => openPrivateChat(user.username);
                 } else {
                     // W każdym innym przypadku (np. moje własne, aktywne konto) nic nie rób.
@@ -268,6 +274,8 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
+            // Ważne: NIE usuwamy tutaj `localStorage`, aby przeglądarka pamiętała
+            // ostatnie konto. To pozwala na ponowne zalogowanie.
             renderUsers(allUsers);
         }
 
