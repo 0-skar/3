@@ -129,11 +129,6 @@
                 return a.username.localeCompare(b.username);
             }).forEach(user => {
                 const isMyStoredIdentity = user.username === storedUsername;
-
-                // --- POPRAWKA ---
-                // Poniższa linia została usunięta, ponieważ powodowała ukrywanie
-                // wylogowanych (nieaktywnych) stałych użytkowników.
-                // if (!isMyStoredIdentity && user.status === 'inactive') return;
                 
                 const slot = document.createElement('div');
                 slot.className = 'user-slot';
@@ -163,12 +158,18 @@
                 header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
                 slot.appendChild(header);
 
+                // --- POPRAWKA ---
+                // Poniższy blok logiki został uproszczony, aby umożliwić
+                // logowanie na dowolne nieaktywne konto.
                 const nameElement = header.querySelector('.user-name');
-                if (isActive && !isMyStoredIdentity) {
-                    nameElement.onclick = () => openPrivateChat(user.username);
-                } else if (user.status === 'inactive' && isMyStoredIdentity) {
+                if (user.status === 'inactive') {
+                    // JEŚLI UŻYTKOWNIK JEST NIEAKTYWNY: kliknięcie zawsze pokaże formularz logowania.
                     nameElement.onclick = () => showLoginForm(slot, user.username, false);
+                } else if (isActive && user.username !== sessionUsername) {
+                    // JEŚLI JEST AKTYWNY (i nie jest mną): kliknięcie otwiera czat prywatny.
+                    nameElement.onclick = () => openPrivateChat(user.username);
                 } else {
+                    // W każdym innym przypadku (np. moje własne, aktywne konto) nic nie rób.
                     nameElement.style.cursor = 'default';
                 }
                 
