@@ -94,7 +94,7 @@
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
 
         function renderUsers(users) {
-            allUsers = users; // Zawsze aktualizuj lokalną kopię listy użytkowników
+            allUsers = users;
             const currentUser = users.find(u => u.username === sessionUsername);
             const isActive = currentUser && currentUser.status === 'active';
             isModerator = isActive && currentUser.role === 'moderator';
@@ -104,29 +104,21 @@
             ui.sendButton.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             
-            // --- ZMIANA: Ulepszona i bardziej niezawodna logika wyświetlania przycisku "Dołącz" ---
-            // Krok 1: Sprawdź, czy tożsamość przeglądarki jest nadal ważna
             if (storedUsername) {
                 const userExistsOnServer = users.some(u => u.username === storedUsername);
                 if (!userExistsOnServer) {
-                    // Jeśli serwer nie zna naszego użytkownika, to znaczy, że nasza tożsamość jest nieaktualna.
-                    // Zapominamy ją.
                     localStorage.removeItem('forumUsername');
                     storedUsername = null;
                 }
             }
 
-            // Krok 2: Na podstawie (ewentualnie zaktualizowanej) tożsamości, zdecyduj co pokazać.
             if (storedUsername) {
-                // Jeśli mamy ważną tożsamość, ukryj opcję dołączenia.
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
             } else {
-                // Jeśli nie mamy tożsamości (bo jesteśmy nowi, lub ją usunęliśmy), pokaż opcję dołączenia.
                 ui.newUserSlot.style.display = 'block';
                 createRegistrationSlot();
             }
-            // --- Koniec zmiany ---
 
             ui.userSlotsContainer.innerHTML = '';
             const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
@@ -137,8 +129,12 @@
                 return a.username.localeCompare(b.username);
             }).forEach(user => {
                 const isMyStoredIdentity = user.username === storedUsername;
-                if (!isMyStoredIdentity && user.status === 'inactive') return;
 
+                // --- POPRAWKA ---
+                // Poniższa linia została usunięta, ponieważ powodowała ukrywanie
+                // wylogowanych (nieaktywnych) stałych użytkowników.
+                // if (!isMyStoredIdentity && user.status === 'inactive') return;
+                
                 const slot = document.createElement('div');
                 slot.className = 'user-slot';
                 if (user.status === 'inactive') slot.classList.add('inactive');
@@ -220,8 +216,6 @@
                 localStorage.removeItem('forumUsername');
                 storedUsername = null;
                 removeActiveForms();
-                // Nie ma potrzeby wywoływać resetSession() tutaj, 
-                // serwer wyśle aktualizację, która przerysuje UI poprawnie.
             };
         }
 
@@ -273,8 +267,6 @@
         function resetSession() {
             sessionUsername = null;
             isModerator = false;
-            // Samo wywołanie renderUsers z obecnym stanem `allUsers` wystarczy,
-            // logika wewnątrz funkcji zajmie się resztą.
             renderUsers(allUsers);
         }
 
