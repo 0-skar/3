@@ -158,8 +158,8 @@
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { const userExistsOnServer = users.some(u => u.username === storedUsername); if (!userExistsOnServer) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             
-            // --- KLUCZOWA POPRAWKA ---
-            if (storedUsername && isActive) {
+            // --- POPRAWIONA LOGIKA ---
+            if (isActive) {
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
             } else {
