@@ -18,8 +18,8 @@
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
         .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
-        /* PRZYWRÓCONY STYL: Oryginalny wygląd zakładek w panelu bocznym */
-        .chat-tabs { height: auto; box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; }
+        /* NOWY STYL: Zakładki w układzie poziomym, pod nagłówkiem */
+        .chat-tabs { flex-wrap: wrap; gap: 5px; height: auto; min-height: var(--header-height); box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 5px 10px; flex-shrink: 0; display: flex; align-items: center; background-color: var(--secondary-bg-color); }
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
         .user-slots-area h3 { margin: 0 0 15px; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); padding-top: 10px; }
         .header-left-panel { display: flex; align-items: center; gap: 20px; }
@@ -40,8 +40,8 @@
         .user-message .username-color { color: var(--accent-color); font-weight: bold; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
-        /* PRZYWRÓCONY STYL: Oryginalny wygląd przycisków zakładek */
-        .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
+        /* NOWY STYL: Przyciski zakładek mają automatyczną szerokość */
+        .tab-button { width: auto; background: none; border: none; color: var(--text-muted-color); padding: 8px 12px; text-align: left; cursor: pointer; border-radius: 5px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); }
         .user-slot.inactive { opacity: 0.6; }
@@ -67,13 +67,13 @@
                     </div>
                     <button id="sidebar-toggle"><</button>
                 </div>
-                <!-- PRZYWRÓCONA STRUKTURA: Okno czatów jest znowu puste na starcie -->
+                <!-- NOWA STRUKTURA: Panel zakładek przeniesiony tutaj -->
+                <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
             
             <div class="sidebar" id="sidebar">
-                <!-- PRZYWRÓCONA STRUKTURA: Panel zakładek wraca na swoje miejsce -->
-                <div class="chat-tabs" id="chat-tabs"></div>
+                <!-- NOWA STRUKTURA: Panel zakładek usunięty stąd -->
                 <div class="user-slots-area">
                     <h3>Użytkownicy</h3>
                     <div id="user-slots-container"></div>
@@ -95,11 +95,12 @@
 
         function createChatWindow(id, name) { if (document.getElementById(`tab-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.id = `tab-${id}`; tabButton.textContent = name; tabButton.onclick = () => switchChat(id); ui.chatTabs.appendChild(tabButton); }
         
-        // PRZYWRÓCONY KOD: Prosta funkcja przełączania, bez usuwania zakładek
         function switchChat(id) {
             activeChat = id;
             document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
-            document.getElementById(`messages-${id}`).style.display = 'block';
+            const chatWindow = document.getElementById(`messages-${id}`);
+            if (chatWindow) chatWindow.style.display = 'block';
+            
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = document.getElementById(`tab-${id}`);
             if(tab) {
@@ -110,7 +111,6 @@
         
         function addMessage(data, targetChat) { const mDiv = document.getElementById(`messages-${targetChat}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; if (data.isPrivate) i.classList.add('private-message'); } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
 
-        // PRZYWRÓCONY KOD: Proste renderowanie, bez dynamicznej zmiany zawartości panelu bocznego
         function renderUsers(users) {
             allUsers = users;
             const currentUser = users.find(u => u.username === sessionUsername);
