@@ -152,14 +152,13 @@
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { const userExistsOnServer = users.some(u => u.username === storedUsername); if (!userExistsOnServer) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             
+            // --- PRZYWRÓCONA, NIEZAWODNA LOGIKA ---
             if (storedUsername && isActive) {
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
             } else {
                 ui.newUserSlot.style.display = 'block';
-                if (ui.newUserSlot.innerHTML === '') {
-                    createRegistrationSlot();
-                }
+                createRegistrationSlot();
             }
             
             ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => { const roleA = roleOrder[a.role] ?? 3; const roleB = roleOrder[b.role] ?? 3; if (roleA !== roleB) return roleA - roleB; return a.username.localeCompare(b.username); }).forEach(user => { const isMyStoredIdentity = user.username === storedUsername; const slot = document.createElement('div'); slot.className = 'user-slot'; if (user.status === 'inactive') slot.classList.add('inactive'); const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) { roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; } let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); 
@@ -199,7 +198,7 @@
         }
 
         function resetSession() { sessionUsername = null; isModerator = false; renderUsers(allUsers); }
-        function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
+        function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); socket.send(JSON.stringify({ type: 'request_private_history', payload: { partner: targetUser } })); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
@@ -214,6 +213,10 @@
                     createChatWindow(chatPartner, `Priv: ${chatPartner}`); addMessage({ username: sender, message: data.payload.message }, chatPartner);
                     lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block';
                     if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
+                }
+                else if (data.type === 'private_history_data') {
+                    const partner = data.payload.partner; const history = data.payload.history; const messagesDiv = document.getElementById(`messages-${partner}`);
+                    if (messagesDiv) { messagesDiv.innerHTML = ''; history.forEach(msg => { addMessage({ username: msg.sender, message: msg.message }, partner); }); }
                 }
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') { sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms(); }
