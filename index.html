@@ -37,20 +37,11 @@
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
-        
-        /* --- BLOK ZMIAN STYLU --- */
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
         .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
-        /* Domyślny kolor tekstu wiadomości ustawiony na biały */
-        .user-message, .private-message { color: var(--text-color); }
-        /* Wiadomości prywatne są dodatkowo pochylone */
-        .private-message { font-style: italic; }
-        /* Kolor niebieski dla nazwy użytkownika na czacie publicznym */
+        .user-message { color: var(--text-color); }
+        .private-message { color: var(--private-msg-color); font-style: italic; }
         .user-message .username-color { color: var(--accent-color); font-weight: bold; }
-        /* Kolor złoty dla nazwy użytkownika w wiadomości prywatnej */
-        .private-message .username-color { color: var(--private-msg-color); font-weight: bold; }
-        /* --- KONIEC BLOKU ZMIAN --- */
-
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; position: relative; }
@@ -145,6 +136,8 @@
             else if (privateTab) { if(publicTab) publicTab.classList.remove('active'); privateTab.classList.add('active'); privateTab.classList.remove('has-unread'); }
         }
         
+        // --- KLUCZOWA POPRAWKA ---
+        // Funkcja jawnie przyjmuje `targetChatId`, eliminując błędy.
         function addMessage(data, targetChatId) {
             const isPrivate = targetChatId !== 'public';
             const mDiv = document.getElementById(`messages-${targetChatId}`);
@@ -155,7 +148,6 @@
                 i.className = 'system-message';
                 i.textContent = data.message;
             } else {
-                // Ta linia decyduje, czy wiadomość dostanie styl .user-message czy .private-message
                 i.className = isPrivate ? 'private-message' : 'user-message';
                 i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`;
             }
