@@ -27,7 +27,6 @@
         #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #private-chat-indicator { display: none; background-color: #40444b; color: var(--text-muted-color); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: background-color 0.3s; }
         #private-chat-indicator:hover { background-color: var(--hover-color); color: var(--text-color); }
-        /* NOWY STYL: Migający wskaźnik */
         #private-chat-indicator.has-unread { animation: flash 1.5s infinite; color: white; }
         .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
@@ -113,31 +112,20 @@
         }
         
         function closePrivateChat(id) {
-            document.getElementById(`tab-private-${id}`)?.remove();
-            document.getElementById(`messages-${id}`)?.remove();
+            document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove();
             if (lastPrivateChatPartner === id) {
                 const nextTab = ui.privateChatTabs.querySelector('.tab-button');
                 lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null;
                 if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; }
                 else { ui.privateChatIndicator.style.display = 'none'; }
             }
-            if (activeChat === id) {
-                const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public';
-                switchChat(nextTabToOpen);
-            }
+            if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); }
         }
 
         function switchChat(id) {
             activeChat = id;
-            if (id === 'public') {
-                ui.privateChatTabs.style.display = 'none';
-            } else {
-                ui.privateChatTabs.style.display = 'flex';
-                lastPrivateChatPartner = id;
-                ui.privateChatIndicator.textContent = id;
-                ui.privateChatIndicator.style.display = 'inline-block';
-                ui.privateChatIndicator.classList.remove('has-unread'); // Zatrzymaj miganie po przełączeniu
-            }
+            if (id === 'public') { ui.privateChatTabs.style.display = 'none'; } 
+            else { ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); }
             document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
             const chatWindow = document.getElementById(`messages-${id}`);
             if (chatWindow) chatWindow.style.display = 'block';
@@ -148,17 +136,13 @@
             else if (privateTab) { if(publicTab) publicTab.classList.remove('active'); privateTab.classList.add('active'); privateTab.classList.remove('has-unread'); }
         }
         
-        // NAPRAWIONA FUNKCJA: Teraz poprawnie kieruje wiadomości do okien
-        function addMessage(data) {
-            const isPrivate = 'isPrivate' in data && data.isPrivate;
-            let targetChatId = 'public';
-            if (isPrivate) {
-                const chatPartner = data.username === sessionUsername ? data.recipient : data.username;
-                targetChatId = chatPartner;
-            }
+        // --- KLUCZOWA POPRAWKA ---
+        // Funkcja jawnie przyjmuje `targetChatId`, eliminując błędy.
+        function addMessage(data, targetChatId) {
+            const isPrivate = targetChatId !== 'public';
             const mDiv = document.getElementById(`messages-${targetChatId}`);
-            if (!mDiv) return; // Jeśli okno nie istnieje, nic nie rób
-            
+            if (!mDiv) return;
+
             const i = document.createElement('li');
             if (data.username === "System") {
                 i.className = 'system-message';
@@ -191,7 +175,7 @@
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
         function resetSession() { sessionUsername = null; isModerator = false; renderUsers(allUsers); }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
-        async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m)); } catch (e) { console.error(e); } }
+        async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
@@ -199,12 +183,12 @@
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'user_update') { renderUsers(data.payload.users); }
-                else if (data.type === 'chat_message') { addMessage({ ...data.payload, isPrivate: false }); }
+                else if (data.type === 'chat_message') { addMessage(data.payload, 'public'); }
                 else if (data.type === 'private_message') {
                     const sender = data.payload.sender;
                     const chatPartner = sender === sessionUsername ? data.payload.recipient : sender;
                     createChatWindow(chatPartner, `Priv: ${chatPartner}`);
-                    addMessage({ ...data.payload, username: sender, isPrivate: true });
+                    addMessage({ username: sender, message: data.payload.message }, chatPartner);
                     lastPrivateChatPartner = chatPartner;
                     ui.privateChatIndicator.textContent = chatPartner;
                     ui.privateChatIndicator.style.display = 'inline-block';
@@ -214,7 +198,7 @@
                         if(tab) tab.classList.add('has-unread');
                     }
                 }
-                else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'});}
+                else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
                 else if (data.type === 'join_success') { sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms(); }
                 else if (data.type === 'join_failed') { alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); }
             };
@@ -224,14 +208,10 @@
 
         ui.form.addEventListener('submit', (e) => {
             e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return;
-            const isPrivate = activeChat !== 'public';
-            const type = isPrivate ? 'private_message' : 'chat_message';
-            const payload = isPrivate ? { recipient: activeChat, message } : { message };
+            const type = activeChat === 'public' ? 'chat_message' : 'private_message';
+            const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
             socket.send(JSON.stringify({ type, payload }));
-            // Lokalne dodanie własnej wiadomości
-            const localMessage = { username: sessionUsername, message, isPrivate: isPrivate };
-            if (isPrivate) localMessage.recipient = activeChat;
-            addMessage(localMessage);
+            addMessage({ username: sessionUsername, message: message }, activeChat);
             ui.input.value = '';
         });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
