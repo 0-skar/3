@@ -152,7 +152,6 @@
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { const userExistsOnServer = users.some(u => u.username === storedUsername); if (!userExistsOnServer) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             
-            // --- PRZYWRÓCONA, NIEZAWODNA LOGIKA ---
             if (storedUsername && isActive) {
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
