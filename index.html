@@ -141,7 +141,6 @@
             const isPrivate = targetChatId !== 'public';
             const mDiv = document.getElementById(`messages-${targetChatId}`);
             if (!mDiv) return;
-
             const i = document.createElement('li');
             if (data.username === "System") {
                 i.className = 'system-message';
@@ -158,7 +157,19 @@
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { const userExistsOnServer = users.some(u => u.username === storedUsername); if (!userExistsOnServer) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
-            if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
+            
+            // --- KLUCZOWA POPRAWKA ---
+            if (storedUsername && isActive) {
+                ui.newUserSlot.style.display = 'none';
+                ui.newUserSlot.innerHTML = '';
+            } else {
+                ui.newUserSlot.style.display = 'block';
+                const isFormOpen = ui.newUserSlot.querySelector('.form-inline');
+                if (!isFormOpen) {
+                    createRegistrationSlot();
+                }
+            }
+            
             ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => { const roleA = roleOrder[a.role] ?? 3; const roleB = roleOrder[b.role] ?? 3; if (roleA !== roleB) return roleA - roleB; return a.username.localeCompare(b.username); }).forEach(user => { const isMyStoredIdentity = user.username === storedUsername; const slot = document.createElement('div'); slot.className = 'user-slot'; if (user.status === 'inactive') slot.classList.add('inactive'); const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) { roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; } let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika na stałe">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); 
             const nameElement = header.querySelector('.user-name');
             if (isActive) {
@@ -173,12 +184,7 @@
         function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
         function resetSession() { sessionUsername = null; isModerator = false; renderUsers(allUsers); }
-        // ZAKTUALIZOWANA FUNKCJA: Prosi serwer o historię rozmowy
-        function openPrivateChat(targetUser) {
-            createChatWindow(targetUser, `Priv: ${targetUser}`);
-            switchChat(targetUser);
-            socket.send(JSON.stringify({ type: 'request_private_history', payload: { partner: targetUser } }));
-        }
+        function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); socket.send(JSON.stringify({ type: 'request_private_history', payload: { partner: targetUser } })); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
         function connectWebSocket() {
@@ -198,16 +204,13 @@
                     ui.privateChatIndicator.style.display = 'inline-block';
                     if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
                 }
-                // NOWY HANDLER: Odbiera i wyświetla historię prywatną
                 else if (data.type === 'private_history_data') {
                     const partner = data.payload.partner;
                     const history = data.payload.history;
                     const messagesDiv = document.getElementById(`messages-${partner}`);
                     if (messagesDiv) {
-                        messagesDiv.innerHTML = ''; // Wyczyść okno przed załadowaniem historii
-                        history.forEach(msg => {
-                            addMessage({ username: msg.sender, message: msg.message }, partner);
-                        });
+                        messagesDiv.innerHTML = ''; 
+                        history.forEach(msg => { addMessage({ username: msg.sender, message: msg.message }, partner); });
                     }
                 }
                 else if (data.type === 'history_cleared') { const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');}
