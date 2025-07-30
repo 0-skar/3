@@ -152,13 +152,11 @@
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { const userExistsOnServer = users.some(u => u.username === storedUsername); if (!userExistsOnServer) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             
-            // Przywrócona logika renderowania slotu "Dołącz"
             if (storedUsername && isActive) {
                 ui.newUserSlot.style.display = 'none';
                 ui.newUserSlot.innerHTML = '';
             } else {
                 ui.newUserSlot.style.display = 'block';
-                // Wywołaj funkcję tylko, jeśli slot jest pusty, aby uniknąć migotania
                 if (ui.newUserSlot.innerHTML === '') {
                     createRegistrationSlot();
                 }
@@ -176,7 +174,6 @@
         function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
         function showSelfActionMenu(slot, isPermanentAccount) { removeActiveForms(); const menu = document.createElement('div'); menu.className = 'action-menu'; let menuHTML = ''; if (isPermanentAccount) { menuHTML += `<button class="logout-btn">Wyloguj</button>`; } menuHTML += `<button class="delete-btn">Usuń konto</button>`; menu.innerHTML = menuHTML; slot.appendChild(menu); const logoutBtn = menu.querySelector('.logout-btn'); if(logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; } menu.querySelector('.delete-btn').onclick = () => { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); storedUsername = null; removeActiveForms(); }; }
         
-        // Przywrócona, niezawodna wersja
         function showLoginForm(slot, targetUsername, isNewUser = false) {
             removeActiveForms();
             const form = document.createElement('form'); form.className = 'form-inline';
@@ -191,7 +188,6 @@
             form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus();
         }
         
-        // Przywrócona, niezawodna wersja
         function createRegistrationSlot() {
             ui.newUserSlot.innerHTML = '';
             const slot = document.createElement('div'); slot.className = 'user-slot';
