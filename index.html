@@ -32,7 +32,10 @@
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
         .chat-windows { position: relative; flex-grow: 1; }
         #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
+        
+        /* --- POPRAWKA BŁĘDU --- */
         .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
+        
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -63,7 +66,7 @@
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
         
-        /* --- NOWE STYLE DLA OSOBISTYCH PRZYCISKÓW GŁOSU --- */
+        /* --- STYLE DLA OSOBISTYCH PRZYCISKÓW GŁOSU --- */
         .voice-control-btn {
             display: none; /* Ukryte dopóki użytkownik się nie zaloguje */
             background: none; border: none; color: var(--text-muted-color);
@@ -131,6 +134,7 @@
         let isMicrophoneOn = false;
         let isGloballyMuted = false;
         const audioContainer = document.createElement('div');
+        audioContainer.id = 'audio-container';
         document.body.appendChild(audioContainer);
 
         const hfSpaceUrl = "eosforus-chat.hf.space";
@@ -155,13 +159,15 @@
                         const offer = await pc.createOffer();
                         await pc.setLocalDescription(offer);
                         sendSignal(target, { type: 'offer', sdp: offer.sdp });
-                    } catch (e) { console.error("Błąd tworzenia oferty:", e); }
+                    } catch (e) { console.error(`Błąd tworzenia oferty dla ${target}:`, e); }
                 }
             }
         }
 
         function sendSignal(recipient, signal) {
-            socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
+            }
         }
 
         function createPeerConnection(targetUser) {
@@ -180,7 +186,9 @@
                 audio.muted = isGloballyMuted;
             };
             pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser);
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            if (localStream) {
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            }
             peerConnections[targetUser] = pc;
             return pc;
         }
@@ -214,12 +222,11 @@
                     cleanupVoiceChat(sender);
                 }
             } catch (err) {
-                console.error("Błąd obsługi sygnału WebRTC:", err);
+                console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err);
                 cleanupVoiceChat(sender);
             }
         }
 
-        // --- FUNKCJE ZWYKŁEGO CZATU ---
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
             const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv);
@@ -233,7 +240,8 @@
             if (id === 'public') { ui.privateChatTabs.style.display = 'none'; } 
             else { ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); }
             document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
-            document.getElementById(`messages-${id}`)?.style.display = 'block';
+            const chatWindow = document.getElementById(`messages-${id}`);
+            if (chatWindow) chatWindow.style.display = 'block';
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = id === 'public' ? document.getElementById('tab-public') : document.getElementById(`tab-private-${id}`);
             if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); }
@@ -294,9 +302,7 @@
                      
                      const nameElement = header.querySelector('.user-name');
                      if (isActive) {
-                         if (user.username === sessionUsername) {
-                             nameElement.onclick = () => { ui.privateChatTabs.style.display = 'flex'; if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } else if (ui.privateChatTabs.querySelector('.tab-button')) { ui.privateChatTabs.querySelector('.tab-button').click(); } };
-                         } else {
+                         if (user.username !== sessionUsername) {
                              nameElement.onclick = () => openPrivateChat(user.username);
                          }
                      } else {
@@ -364,7 +370,6 @@
             socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
         }
 
-        // --- OBSŁUGA OSOBISTYCH PRZYCISKÓW GŁOSU ---
         ui.masterMicToggle.addEventListener('click', () => {
             if (!localStream) return;
             isMicrophoneOn = !isMicrophoneOn;
@@ -383,7 +388,6 @@
             ui.masterSpeakerToggle.innerHTML = isGloballyMuted ? '🔈' : '🔊';
         });
 
-        // --- POZOSTAŁE FUNKCJE POMOCNICZE ---
         function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
@@ -392,7 +396,6 @@
         function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
 
-        // --- INICJALIZACJA ---
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); addMessage({ username: sessionUsername, message: message }, activeChat); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
