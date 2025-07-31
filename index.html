@@ -31,7 +31,6 @@
         .header-right-panel { display: flex; align-items: center; gap: 10px; }
         #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #private-chat-indicator { display: none; background-color: #40444b; color: var(--text-muted-color); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: background-color 0.3s; }
-        #private-chat-indicator:hover { background-color: var(--hover-color); color: var(--text-color); }
         #private-chat-indicator.has-unread { animation: flash 1.5s infinite; color: white; }
         .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
@@ -143,10 +142,24 @@
             recognition.interimResults = true;
 
             recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; };
-            recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; if (ui.input.value.trim()) { ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); }};
-            recognition.onresult = (event) => { let final_transcript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { final_transcript += event.results[i][0].transcript; } ui.input.value = final_transcript; };
             
-            // --- POPRAWIONA OBSŁUGA BŁĘDÓW ---
+            recognition.onend = () => {
+                isRecording = false;
+                ui.micToTextBtn.classList.remove('listening');
+                ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
+                if (ui.input.value.trim()) {
+                    ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let final_transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    final_transcript += event.results[i][0].transcript;
+                }
+                ui.input.value = final_transcript;
+            };
+            
             recognition.onerror = (event) => {
                 console.error("Błąd rozpoznawania mowy:", event.error);
                 if (event.error === 'network') {
