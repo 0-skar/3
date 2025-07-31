@@ -140,8 +140,8 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'pl-PL';
-            recognition.continuous = true; // Słuchaj w sposób ciągły
-            recognition.interimResults = true; // Pokazuj wyniki na bieżąco
+            recognition.continuous = true;
+            recognition.interimResults = true;
 
             recognition.onstart = () => {
                 isRecording = true;
@@ -153,7 +153,6 @@
                 isRecording = false;
                 ui.micToTextBtn.classList.remove('listening');
                 ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
-                // Automatycznie wyślij wiadomość po zakończeniu nagrywania, jeśli jest treść
                 if (ui.input.value.trim()) {
                     ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                 }
@@ -333,7 +332,7 @@
             ui.input.disabled = !isActive; 
             ui.sendButton.disabled = !isActive;
             if (ui.micToTextBtn) ui.micToTextBtn.disabled = !isActive;
-            ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
+            ui.input.placeholder = isActive ? "Wpisz swoją wiadomość lub naciśnij mikrofon..." : "Zaloguj się, aby rozmawiać...";
 
             if (storedUsername) { if (!users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
