@@ -32,7 +32,10 @@
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
         .chat-windows { position: relative; flex-grow: 1; }
         #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
+        
+        /* --- POPRAWKA BŁĘDU CSS --- */
         .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
+        
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -59,6 +62,7 @@
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button.voice-toggle-btn.active { color: var(--voice-active-color); }
         .action-button:hover { color: #ff4d4d; }
+        .action-button.voice-toggle-btn:hover { color: var(--voice-active-color); }
         .form-inline { margin-top: 10px; display: flex; flex-direction: column; }
         .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
@@ -124,7 +128,6 @@
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         const historyUrl = `https://${hfSpaceUrl}/history`;
 
-        // --- GŁÓWNA FUNKCJA ZARZĄDZANIA POŁĄCZENIAMI GŁOSOWYMI ---
         async function updateAllVoiceConnections() {
             if (!isVoiceActive || !localStream || !sessionUsername) {
                 Object.keys(peerConnections).forEach(cleanupVoiceChat);
@@ -209,10 +212,9 @@
             }
         }
         
-        // --- FUNKCJA PRZEŁĄCZANIA GŁOSU ---
         function toggleVoice() {
             if (!localStream) {
-                alert("Najpierw zezwól na dostęp do mikrofonu.");
+                alert("Najpierw zezwól na dostęp do mikrofonu (może być wymagane odświeżenie strony).");
                 return;
             }
             isVoiceActive = !isVoiceActive;
@@ -227,8 +229,14 @@
             updateAllVoiceConnections();
         }
 
-        // --- FUNKCJE CZATU ---
-        function createChatWindow(id, name) { /* ... bez zmian ... */ }
+        function createChatWindow(id, name) {
+            if (document.getElementById(`messages-${id}`)) return;
+            const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv);
+            const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.textContent = name; tabButton.onclick = () => switchChat(id);
+            if (id === 'public') { tabButton.id = 'tab-public'; ui.publicChatTabs.appendChild(tabButton); } 
+            else { tabButton.id = `tab-private-${id}`; const closeBtn = document.createElement('span'); closeBtn.className = 'close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); }; tabButton.appendChild(closeBtn); ui.privateChatTabs.appendChild(tabButton); }
+        }
+
         function switchChat(id) {
             activeChat = id;
             if (id === 'public') { ui.privateChatTabs.style.display = 'none'; } 
@@ -239,10 +247,22 @@
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = id === 'public' ? document.getElementById('tab-public') : document.getElementById(`tab-private-${id}`);
             if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); }
-            updateAllVoiceConnections(); // KLUCZOWE: aktualizuj głos po zmianie czatu
+            updateAllVoiceConnections();
         }
 
-        function addMessage(data, targetChatId) { /* ... bez zmian ... */ }
+        function addMessage(data, targetChatId) {
+            const isPrivate = targetChatId !== 'public';
+            const mDiv = document.getElementById(`messages-${targetChatId}`);
+            if (!mDiv) return;
+            const i = document.createElement('li');
+            if (data.username === "System") {
+                i.className = 'system-message'; i.textContent = data.message;
+            } else {
+                i.className = isPrivate ? 'private-message' : 'user-message';
+                i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`;
+            }
+            mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight;
+        }
         
         function renderUsers(users) {
             allUsers = users;
@@ -272,12 +292,10 @@
                      let nameHTML = roleIcon + user.username;
                      let actionsHTML = '';
                      
-                     // --- NOWA LOGIKA DODAWANIA PRZYCISKU GŁOSU ---
                      if (isMyStoredIdentity && isActive) {
                          nameHTML += ' (Ty)';
                          const voiceIcon = isVoiceActive ? '🔊' : '🔈';
                          const voiceTitle = isVoiceActive ? 'Wyłącz głos (jesteś słyszalny)' : 'Włącz głos';
-                         // Dodajemy przycisk głosu i przycisk akcji konta
                          actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="${voiceTitle}">${voiceIcon}</button>`;
                          actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`;
                      } else if (isModerator && user.username !== sessionUsername) {
@@ -287,11 +305,16 @@
                      slot.appendChild(header);
                      
                      const nameElement = header.querySelector('.user-name');
-                     if (isActive && user.username !== sessionUsername) {
-                         nameElement.onclick = () => openPrivateChat(user.username);
+                     if (isActive) {
+                         if (user.username !== sessionUsername) {
+                             nameElement.onclick = () => openPrivateChat(user.username);
+                         }
+                     } else {
+                         if (user.status === 'inactive') {
+                             nameElement.onclick = () => showLoginForm(slot, user.username, false);
+                         } else { nameElement.style.cursor = 'default'; }
                      }
                      
-                     // --- NOWA LOGIKA PRZYPISYWANIA ZDARZEŃ ---
                      const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn');
                      if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); };
 
@@ -338,7 +361,7 @@
                             navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true } })
                                 .then(stream => {
                                     localStream = stream;
-                                    localStream.getAudioTracks().forEach(track => track.enabled = false); // Mikrofon startuje wyłączony
+                                    localStream.getAudioTracks().forEach(track => track.enabled = false);
                                 }).catch(err => alert("Nie udało się uzyskać dostępu do mikrofonu. Funkcje głosowe będą niedostępne."));
                         }
                         break;
@@ -351,8 +374,7 @@
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
             socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
         }
-
-        // --- POZOSTAŁE FUNKCJE POMOCNICZE (bez zmian) ---
+        
         function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
@@ -361,7 +383,6 @@
         function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
 
-        // --- INICJALIZACJA ---
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); addMessage({ username: sessionUsername, message: message }, activeChat); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
