@@ -116,10 +116,9 @@
         let storedUsername = localStorage.getItem('forumUsername');
         let lastPrivateChatPartner = null;
 
-        // --- UPROSZCZONA LOGIKA GŁOSU ---
         let localStream = null;
         let peerConnections = {};
-        let isVoiceActive = false; // Jedyny przełącznik głosu
+        let isVoiceActive = false;
         const audioContainer = document.createElement('div');
         audioContainer.id = 'audio-container';
         document.body.appendChild(audioContainer);
@@ -347,16 +346,38 @@
                 const data = JSON.parse(event.data);
                 switch(data.type) {
                     case 'user_update': renderUsers(data.payload.users); break;
-                    case 'chat_message': addMessage(data.payload, 'public'); break;
-                    case 'private_message':
-                        const sender = data.payload.sender; const chatPartner = sender === sessionUsername ? data.payload.recipient : sender;
-                        createChatWindow(chatPartner, `Priv: ${chatPartner}`); addMessage({ username: sender, message: data.payload.message }, chatPartner);
-                        lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block';
-                        if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
+                    case 'chat_message':
+                        // --- POPRAWKA: IGNORUJ WIADOMOŚCI OD SAMEGO SIEBIE ---
+                        if (data.payload.username === sessionUsername) break;
+                        addMessage(data.payload, 'public');
                         break;
-                    case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
+                    case 'private_message':
+                        const sender = data.payload.sender;
+                        // Na kliencie odbiorcy, partnerem rozmowy jest zawsze nadawca
+                        const chatPartner = sender;
+                        createChatWindow(chatPartner, `Priv: ${chatPartner}`);
+                        addMessage({ username: sender, message: data.payload.message }, chatPartner);
+                        lastPrivateChatPartner = chatPartner;
+                        ui.privateChatIndicator.textContent = chatPartner;
+                        ui.privateChatIndicator.style.display = 'inline-block';
+                        if (activeChat !== chatPartner) {
+                            ui.privateChatIndicator.classList.add('has-unread');
+                            const tab = document.getElementById(`tab-private-${chatPartner}`);
+                            if(tab) tab.classList.add('has-unread');
+                        }
+                        break;
+                    case 'history_cleared':
+                        const publicChat = document.getElementById('messages-public');
+                        if(publicChat) publicChat.innerHTML = '';
+                        addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');
+                        break;
                     case 'join_success':
-                        sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
+                        sessionUsername = data.payload.username;
+                        if (!storedUsername || storedUsername !== sessionUsername) {
+                            storedUsername = sessionUsername;
+                            localStorage.setItem('forumUsername', storedUsername);
+                        }
+                        removeActiveForms();
                         if (!localStream) {
                             navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true } })
                                 .then(stream => {
@@ -365,7 +386,10 @@
                                 }).catch(err => alert("Nie udało się uzyskać dostępu do mikrofonu. Funkcje głosowe będą niedostępne."));
                         }
                         break;
-                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
+                    case 'join_failed':
+                        alert(`Logowanie nieudane: ${data.payload.reason}`);
+                        renderUsers(allUsers);
+                        break;
                     case 'webrtc_signal':
                         if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal);
                         break;
@@ -375,7 +399,7 @@
             socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
         }
         
-        function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
+        function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
@@ -383,7 +407,18 @@
         function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
 
-        ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); addMessage({ username: sessionUsername, message: message }, activeChat); ui.input.value = ''; });
+        ui.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = ui.input.value.trim();
+            if (!message || !sessionUsername) return;
+            const type = activeChat === 'public' ? 'chat_message' : 'private_message';
+            const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
+            socket.send(JSON.stringify({ type, payload }));
+            // Dodaj wiadomość lokalnie - to jest "optymistyczne" dodanie
+            addMessage({ username: sessionUsername, message: message }, activeChat);
+            ui.input.value = '';
+        });
+
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
         ui.privateChatIndicator.onclick = () => { if(lastPrivateChatPartner) { openPrivateChat(lastPrivateChatPartner); } };
