@@ -123,6 +123,7 @@
         let localStream = null;
         let peerConnections = {};
         let isVoiceActive = false;
+        let wasVoiceActiveBeforeRecognition = false;
         const audioContainer = document.createElement('div');
         audioContainer.id = 'audio-container';
         document.body.appendChild(audioContainer);
@@ -141,12 +142,23 @@
             recognition.continuous = true;
             recognition.interimResults = true;
 
-            recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; };
+            recognition.onstart = () => { 
+                isRecording = true; 
+                ui.micToTextBtn.classList.add('listening'); 
+                ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; 
+            };
             
             recognition.onend = () => {
                 isRecording = false;
                 ui.micToTextBtn.classList.remove('listening');
                 ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
+
+                // Wznów czat głosowy, jeśli był aktywny
+                if (wasVoiceActiveBeforeRecognition && localStream) {
+                    localStream.getAudioTracks().forEach(track => track.enabled = true);
+                    wasVoiceActiveBeforeRecognition = false;
+                }
+
                 if (ui.input.value.trim()) {
                     ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                 }
@@ -161,17 +173,40 @@
             };
             
             recognition.onerror = (event) => {
-                console.error("Błąd rozpoznawania mowy:", event.error);
-                if (event.error === 'network') {
-                    addMessage({ username: 'System', message: 'Wystąpił błąd sieciowy podczas przetwarzania mowy. Proszę, spróbuj ponownie za chwilę.' }, activeChat);
-                } else if (event.error === 'not-allowed') {
-                    addMessage({ username: 'System', message: 'Odmówiono dostępu do mikrofonu dla funkcji mowy-na-tekst. Musisz zezwolić na dostęp w ustawieniach przeglądarki.' }, activeChat);
-                } else if (event.error === 'no-speech') {
-                    addMessage({ username: 'System', message: 'Nie wykryto mowy. Spróbuj mówić wyraźniej.' }, activeChat);
+                console.error("Błąd rozpoznawania mowy:", event.error, event.message);
+                isRecording = false; 
+                ui.micToTextBtn.classList.remove('listening'); 
+                ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
+
+                // Wznów czat głosowy w razie błędu
+                if (wasVoiceActiveBeforeRecognition && localStream) {
+                    localStream.getAudioTracks().forEach(track => track.enabled = true);
+                    wasVoiceActiveBeforeRecognition = false;
                 }
+                
+                let errorMessage = 'Wystąpił nieoczekiwany błąd rozpoznawania mowy.';
+                switch (event.error) {
+                    case 'network': errorMessage = 'Błąd sieci. Sprawdź swoje połączenie z internetem i spróbuj ponownie. Usługa rozpoznawania mowy może być też chwilowo niedostępna.'; break;
+                    case 'not-allowed': case 'service-not-allowed': errorMessage = 'Odmówiono dostępu do mikrofonu. Musisz zezwolić na dostęp w ustawieniach przeglądarki, aby korzystać z tej funkcji.'; break;
+                    case 'no-speech': errorMessage = 'Nie wykryto żadnej mowy. Spróbuj mówić głośniej i wyraźniej.'; break;
+                    case 'audio-capture': errorMessage = 'Problem ze sprzętem audio. Upewnij się, że Twój mikrofon jest poprawnie podłączony i skonfigurowany.'; break;
+                    case 'aborted': errorMessage = 'Rozpoznawanie mowy zostało przerwane.'; break;
+                }
+                addMessage({ username: 'System', message: errorMessage }, activeChat);
             };
 
-            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { recognition.start(); }});
+            ui.micToTextBtn.addEventListener('click', () => {
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    // Sprawdź, czy czat głosowy jest aktywny i tymczasowo go wyłącz
+                    wasVoiceActiveBeforeRecognition = isVoiceActive;
+                    if (isVoiceActive && localStream) {
+                        localStream.getAudioTracks().forEach(track => track.enabled = false);
+                    }
+                    recognition.start();
+                }
+            });
         } else {
             console.log("Web Speech API nie jest wspierane w tej przeglądarce.");
             ui.micToTextBtn.style.display = 'none';
@@ -209,8 +244,18 @@
             } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); }
         }
         
-        function toggleVoice() {
-            if (!localStream) { alert("Najpierw zezwól na dostęp do mikrofonu (może być wymagane odświeżenie strony)."); return; }
+        async function toggleVoice() {
+            // Poproś o mikrofon przy pierwszej próbie użycia
+            if (!localStream) {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                } catch (err) {
+                    console.error("Błąd dostępu do mikrofonu dla WebRTC:", err);
+                    alert("Nie udało się uzyskać dostępu do mikrofonu dla rozmów głosowych. Funkcja może być niedostępna. Sprawdź uprawnienia w przeglądarce.");
+                    return;
+                }
+            }
+
             isVoiceActive = !isVoiceActive;
             localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
             const voiceBtn = document.getElementById('self-voice-toggle-btn');
@@ -269,7 +314,7 @@
                     case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
                     case 'join_success':
                         sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
-                        if (!localStream) { navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => { localStream = stream; localStream.getAudioTracks().forEach(track => track.enabled = false); }).catch(err => { console.error("Błąd dostępu do mikrofonu dla WebRTC:", err); alert("Nie udało się uzyskać dostępu do mikrofonu dla rozmów głosowych. Funkcja może być niedostępna.");}); }
+                        // ZMIANA: Usunięto automatyczne pobieranie mikrofonu tutaj.
                         break;
                     case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
                     case 'webrtc_signal': if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
