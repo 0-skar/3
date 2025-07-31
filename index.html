@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Forum z Głosem</title>
     <style>
         :root {
@@ -132,6 +132,7 @@
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         const historyUrl = `https://${hfSpaceUrl}/history`;
 
+        // --- NOWA, POPRAWIONA LOGIKA MOWY-NA-TEKST ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let isRecording = false;
@@ -139,25 +140,48 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'pl-PL';
-            recognition.interimResults = true;
-            recognition.continuous = false;
+            recognition.continuous = true; // Słuchaj w sposób ciągły
+            recognition.interimResults = true; // Pokazuj wyniki na bieżąco
+
+            recognition.onstart = () => {
+                isRecording = true;
+                ui.micToTextBtn.classList.add('listening');
+                ui.micToTextBtn.title = 'Zatrzymaj nagrywanie';
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                ui.micToTextBtn.classList.remove('listening');
+                ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
+                // Automatycznie wyślij wiadomość po zakończeniu nagrywania, jeśli jest treść
+                if (ui.input.value.trim()) {
+                    ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            };
 
             recognition.onresult = (event) => {
-                let finalTranscript = ui.input.value;
+                let final_transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript = event.results[i][0].transcript;
-                    } else {
-                        ui.input.value = event.results[i][0].transcript;
-                    }
+                    final_transcript += event.results[i][0].transcript;
                 }
-                ui.input.value = finalTranscript;
+                ui.input.value = final_transcript;
             };
             
-            recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; };
-            recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; };
-            recognition.onerror = (event) => { console.error("Błąd rozpoznawania mowy:", event.error); if(event.error === 'not-allowed') { alert("Odmówiono dostępu do mikrofonu dla funkcji mowy-na-tekst."); }};
-            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { recognition.start(); }});
+            recognition.onerror = (event) => {
+                console.error("Błąd rozpoznawania mowy:", event.error);
+                if(event.error === 'not-allowed') {
+                    alert("Odmówiono dostępu do mikrofonu dla funkcji mowy-na-tekst.");
+                }
+            };
+
+            ui.micToTextBtn.addEventListener('click', () => {
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+
         } else {
             console.log("Web Speech API nie jest wspierane w tej przeglądarce.");
             ui.micToTextBtn.style.display = 'none';
