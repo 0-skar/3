@@ -14,6 +14,11 @@
             --header-height: 52px;
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
         
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
@@ -31,11 +36,8 @@
         .main-content { display: flex; flex-direction: row; flex-grow: 1; min-height: 0; }
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
         .chat-windows { position: relative; flex-grow: 1; }
-        #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); }
-        
-        /* --- POPRAWKA BŁĘDU CSS --- */
+        #form { flex-shrink: 0; display: flex; padding: 10px; background-color: var(--secondary-bg-color); border-top: 1px solid var(--border-color); align-items: center;}
         .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
-        
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
         #clear-history-btn { display: none; background-color: var(--danger-color); color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
@@ -47,7 +49,10 @@
         .user-message .username-color { color: var(--accent-color); font-weight: bold; }
         .private-message .username-color { color: var(--private-msg-color); font-weight: bold; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
-        #form button { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #form button[type="submit"] { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #mic-to-text-btn { background: none; border: none; color: var(--text-muted-color); padding: 8px; margin-left: 10px; font-size: 1.5rem; cursor: pointer; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+        #mic-to-text-btn:hover:not(:disabled) { background-color: var(--hover-color); }
+        #mic-to-text-btn.listening { color: var(--danger-color); animation: pulse 1.5s infinite; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; position: relative; }
         .private-chat-tabs .tab-button { width: auto; padding: 8px 24px 8px 12px; }
         .tab-button .close-tab-btn { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 1rem; color: var(--text-muted-color); cursor: pointer; display: none; }
@@ -86,7 +91,6 @@
                 <div class="private-chat-tabs" id="private-chat-tabs"></div>
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
-            
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
@@ -98,18 +102,19 @@
         </div>
         <form id="form" action="">
             <input id="input" autocomplete="off" placeholder="Zaloguj się, aby rozmawiać..." disabled />
+            <button type="button" id="mic-to-text-btn" title="Nagraj wiadomość głosową" disabled>🎤</button>
             <button type="submit" disabled>Wyślij</button>
         </form>
     </div>
     
     <script>
         const ui = {
-            form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button'),
-            chatWindows: document.getElementById('chat-windows'), publicChatTabs: document.getElementById('chat-tabs'),
-            privateChatTabs: document.getElementById('private-chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'),
-            newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'),
-            sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn'),
-            privateChatIndicator: document.getElementById('private-chat-indicator')
+            form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button[type="submit"]'),
+            micToTextBtn: document.getElementById('mic-to-text-btn'), chatWindows: document.getElementById('chat-windows'), 
+            publicChatTabs: document.getElementById('chat-tabs'), privateChatTabs: document.getElementById('private-chat-tabs'), 
+            userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), 
+            sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), 
+            clearHistoryBtn: document.getElementById('clear-history-btn'), privateChatIndicator: document.getElementById('private-chat-indicator')
         };
 
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
@@ -126,6 +131,37 @@
         const hfSpaceUrl = "eosforus-chat.hf.space";
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         const historyUrl = `https://${hfSpaceUrl}/history`;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isRecording = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pl-PL';
+            recognition.interimResults = true;
+            recognition.continuous = false;
+
+            recognition.onresult = (event) => {
+                let finalTranscript = ui.input.value;
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript = event.results[i][0].transcript;
+                    } else {
+                        ui.input.value = event.results[i][0].transcript;
+                    }
+                }
+                ui.input.value = finalTranscript;
+            };
+            
+            recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; };
+            recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; };
+            recognition.onerror = (event) => { console.error("Błąd rozpoznawania mowy:", event.error); if(event.error === 'not-allowed') { alert("Odmówiono dostępu do mikrofonu dla funkcji mowy-na-tekst."); }};
+            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { recognition.start(); }});
+        } else {
+            console.log("Web Speech API nie jest wspierane w tej przeglądarce.");
+            ui.micToTextBtn.style.display = 'none';
+        }
 
         async function updateAllVoiceConnections() {
             if (!isVoiceActive || !localStream || !sessionUsername) {
@@ -270,7 +306,9 @@
             isModerator = isActive && currentUser.role === 'moderator';
 
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
-            ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive;
+            ui.input.disabled = !isActive; 
+            ui.sendButton.disabled = !isActive;
+            if (ui.micToTextBtn) ui.micToTextBtn.disabled = !isActive;
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość..." : "Zaloguj się, aby rozmawiać...";
 
             if (storedUsername) { if (!users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
@@ -325,7 +363,6 @@
                      
                      ui.userSlotsContainer.appendChild(slot);
                  });
-            updateAllVoiceConnections();
         }
 
         function resetSession() {
@@ -347,49 +384,25 @@
                 switch(data.type) {
                     case 'user_update': renderUsers(data.payload.users); break;
                     case 'chat_message':
-                        // --- POPRAWKA: IGNORUJ WIADOMOŚCI OD SAMEGO SIEBIE ---
-                        if (data.payload.username === sessionUsername) break;
-                        addMessage(data.payload, 'public');
+                        if (data.payload.username !== sessionUsername) addMessage(data.payload, 'public');
                         break;
                     case 'private_message':
-                        const sender = data.payload.sender;
-                        // Na kliencie odbiorcy, partnerem rozmowy jest zawsze nadawca
-                        const chatPartner = sender;
-                        createChatWindow(chatPartner, `Priv: ${chatPartner}`);
-                        addMessage({ username: sender, message: data.payload.message }, chatPartner);
-                        lastPrivateChatPartner = chatPartner;
-                        ui.privateChatIndicator.textContent = chatPartner;
-                        ui.privateChatIndicator.style.display = 'inline-block';
-                        if (activeChat !== chatPartner) {
-                            ui.privateChatIndicator.classList.add('has-unread');
-                            const tab = document.getElementById(`tab-private-${chatPartner}`);
-                            if(tab) tab.classList.add('has-unread');
+                        if (data.payload.sender !== sessionUsername) {
+                            const chatPartner = data.payload.sender;
+                            createChatWindow(chatPartner, `Priv: ${chatPartner}`);
+                            addMessage({ username: chatPartner, message: data.payload.message }, chatPartner);
+                            lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block';
+                            if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
                         }
                         break;
-                    case 'history_cleared':
-                        const publicChat = document.getElementById('messages-public');
-                        if(publicChat) publicChat.innerHTML = '';
-                        addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');
-                        break;
+                    case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
                     case 'join_success':
-                        sessionUsername = data.payload.username;
-                        if (!storedUsername || storedUsername !== sessionUsername) {
-                            storedUsername = sessionUsername;
-                            localStorage.setItem('forumUsername', storedUsername);
-                        }
-                        removeActiveForms();
+                        sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
                         if (!localStream) {
-                            navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true } })
-                                .then(stream => {
-                                    localStream = stream;
-                                    localStream.getAudioTracks().forEach(track => track.enabled = false);
-                                }).catch(err => alert("Nie udało się uzyskać dostępu do mikrofonu. Funkcje głosowe będą niedostępne."));
+                            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => { localStream = stream; localStream.getAudioTracks().forEach(track => track.enabled = false); }).catch(err => { console.error("Błąd dostępu do mikrofonu dla WebRTC:", err); alert("Nie udało się uzyskać dostępu do mikrofonu dla rozmów głosowych. Funkcja może być niedostępna.");});
                         }
                         break;
-                    case 'join_failed':
-                        alert(`Logowanie nieudane: ${data.payload.reason}`);
-                        renderUsers(allUsers);
-                        break;
+                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
                     case 'webrtc_signal':
                         if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal);
                         break;
@@ -399,7 +412,7 @@
             socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
         }
         
-        function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
+        function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
@@ -414,7 +427,6 @@
             const type = activeChat === 'public' ? 'chat_message' : 'private_message';
             const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
             socket.send(JSON.stringify({ type, payload }));
-            // Dodaj wiadomość lokalnie - to jest "optymistyczne" dodanie
             addMessage({ username: sessionUsername, message: message }, activeChat);
             ui.input.value = '';
         });
