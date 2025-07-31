@@ -123,7 +123,6 @@
         let localStream = null;
         let peerConnections = {};
         let isVoiceActive = false;
-        let wasVoiceActiveBeforeRecognition = false;
         const audioContainer = document.createElement('div');
         audioContainer.id = 'audio-container';
         document.body.appendChild(audioContainer);
@@ -152,13 +151,6 @@
                 isRecording = false;
                 ui.micToTextBtn.classList.remove('listening');
                 ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
-
-                // Wznów czat głosowy, jeśli był aktywny
-                if (wasVoiceActiveBeforeRecognition && localStream) {
-                    localStream.getAudioTracks().forEach(track => track.enabled = true);
-                    wasVoiceActiveBeforeRecognition = false;
-                }
-
                 if (ui.input.value.trim()) {
                     ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                 }
@@ -177,12 +169,6 @@
                 isRecording = false; 
                 ui.micToTextBtn.classList.remove('listening'); 
                 ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
-
-                // Wznów czat głosowy w razie błędu
-                if (wasVoiceActiveBeforeRecognition && localStream) {
-                    localStream.getAudioTracks().forEach(track => track.enabled = true);
-                    wasVoiceActiveBeforeRecognition = false;
-                }
                 
                 let errorMessage = 'Wystąpił nieoczekiwany błąd rozpoznawania mowy.';
                 switch (event.error) {
@@ -199,11 +185,6 @@
                 if (isRecording) {
                     recognition.stop();
                 } else {
-                    // Sprawdź, czy czat głosowy jest aktywny i tymczasowo go wyłącz
-                    wasVoiceActiveBeforeRecognition = isVoiceActive;
-                    if (isVoiceActive && localStream) {
-                        localStream.getAudioTracks().forEach(track => track.enabled = false);
-                    }
                     recognition.start();
                 }
             });
@@ -245,7 +226,9 @@
         }
         
         async function toggleVoice() {
-            // Poproś o mikrofon przy pierwszej próbie użycia
+            if (isRecording) {
+                recognition.stop();
+            }
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -257,6 +240,11 @@
             }
 
             isVoiceActive = !isVoiceActive;
+            
+            // KLUCZOWA ZMIANA: Pokaż/ukryj przycisk mowy-na-tekst
+            // Użytkownik nie może dyktować tekstu i mówić jednocześnie
+            ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
+
             localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
             const voiceBtn = document.getElementById('self-voice-toggle-btn');
             if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos (jesteś słyszalny)' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); }
@@ -271,7 +259,16 @@
         
         function renderUsers(users) {
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
-            ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; if (ui.micToTextBtn) ui.micToTextBtn.disabled = !isActive;
+            ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive;
+            
+            // Zarządzanie widocznością i stanem przycisku mikrofonu
+            ui.micToTextBtn.disabled = !isActive;
+            if (isActive) {
+                ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
+            } else {
+                ui.micToTextBtn.style.display = 'flex'; // Pokaż, ale jest wyłączony
+            }
+
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość lub naciśnij mikrofon..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { if (!users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
             if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
@@ -294,7 +291,22 @@
                  });
         }
 
-        function resetSession() { Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } isVoiceActive = false; sessionUsername = null; isModerator = false; renderUsers(allUsers); }
+        function resetSession() { 
+            Object.keys(peerConnections).forEach(cleanupVoiceChat); 
+            if(localStream) { 
+                localStream.getTracks().forEach(track => track.stop()); 
+                localStream = null; 
+            } 
+            isVoiceActive = false; 
+            sessionUsername = null; 
+            isModerator = false; 
+            
+            // Zresetuj UI do stanu wylogowania
+            ui.micToTextBtn.disabled = true;
+            ui.micToTextBtn.style.display = 'flex';
+            
+            renderUsers(allUsers); 
+        }
 
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
@@ -314,7 +326,6 @@
                     case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
                     case 'join_success':
                         sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
-                        // ZMIANA: Usunięto automatyczne pobieranie mikrofonu tutaj.
                         break;
                     case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
                     case 'webrtc_signal': if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
