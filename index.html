@@ -165,20 +165,13 @@
             };
             
             recognition.onerror = (event) => {
-                console.error("Błąd rozpoznawania mowy:", event.error, event.message);
+                // Log the error to the console for developers, but do not show it to the user.
+                console.error("Błąd rozpoznawania mowy:", event.error, event.message); 
+
+                // Silently reset the UI state.
                 isRecording = false; 
                 ui.micToTextBtn.classList.remove('listening'); 
                 ui.micToTextBtn.title = 'Nagraj wiadomość głosową';
-                
-                let errorMessage = 'Wystąpił nieoczekiwany błąd rozpoznawania mowy.';
-                switch (event.error) {
-                    case 'network': errorMessage = 'Błąd sieci. Sprawdź swoje połączenie z internetem i spróbuj ponownie. Usługa rozpoznawania mowy może być też chwilowo niedostępna.'; break;
-                    case 'not-allowed': case 'service-not-allowed': errorMessage = 'Odmówiono dostępu do mikrofonu. Musisz zezwolić na dostęp w ustawieniach przeglądarki, aby korzystać z tej funkcji.'; break;
-                    case 'no-speech': errorMessage = 'Nie wykryto żadnej mowy. Spróbuj mówić głośniej i wyraźniej.'; break;
-                    case 'audio-capture': errorMessage = 'Problem ze sprzętem audio. Upewnij się, że Twój mikrofon jest poprawnie podłączony i skonfigurowany.'; break;
-                    case 'aborted': errorMessage = 'Rozpoznawanie mowy zostało przerwane.'; break;
-                }
-                addMessage({ username: 'System', message: errorMessage }, activeChat);
             };
 
             ui.micToTextBtn.addEventListener('click', () => {
@@ -241,8 +234,6 @@
 
             isVoiceActive = !isVoiceActive;
             
-            // KLUCZOWA ZMIANA: Pokaż/ukryj przycisk mowy-na-tekst
-            // Użytkownik nie może dyktować tekstu i mówić jednocześnie
             ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
 
             localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
@@ -261,12 +252,11 @@
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive;
             
-            // Zarządzanie widocznością i stanem przycisku mikrofonu
             ui.micToTextBtn.disabled = !isActive;
             if (isActive) {
                 ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
             } else {
-                ui.micToTextBtn.style.display = 'flex'; // Pokaż, ale jest wyłączony
+                ui.micToTextBtn.style.display = 'flex';
             }
 
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość lub naciśnij mikrofon..." : "Zaloguj się, aby rozmawiać...";
@@ -301,7 +291,6 @@
             sessionUsername = null; 
             isModerator = false; 
             
-            // Zresetuj UI do stanu wylogowania
             ui.micToTextBtn.disabled = true;
             ui.micToTextBtn.style.display = 'flex';
             
