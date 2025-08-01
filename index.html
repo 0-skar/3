@@ -14,28 +14,20 @@
             --header-height: 52px;
         }
         @keyframes flash { 0%, 100% { background-color: var(--hover-color); } 50% { background-color: var(--notification-color); } }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
         
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
-        
-        /* ZMIANA: Style dla głównych widoków */
         .main-view { display: flex; flex-direction: column; height: 100%; }
-        #private-archive-view { display: none; }
+        #private-view { display: none; }
         
         .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         .chat-tabs { height: var(--header-height); box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; }
-        
         .private-chat-tabs { flex-wrap: wrap; gap: 5px; height: auto; padding: 5px 10px; flex-shrink: 0; display: flex; align-items: center; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
         
         .sidebar-heading { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 0 0; margin-bottom: 15px; }
         .sidebar-heading h3 { margin: 0; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
-
         .header-left-panel { display: flex; align-items: center; gap: 20px; }
         .header-right-panel { display: flex; align-items: center; gap: 10px; }
         #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
@@ -47,17 +39,19 @@
         .sidebar { width: var(--sidebar-width); flex-shrink: 0; background-color: var(--secondary-bg-color); display: flex; flex-direction: column; border-left: 1px solid var(--border-color); transition: width var(--transition-speed), min-width var(--transition-speed); }
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
-
         #clear-history-btn { display: none; background: none; border: none; color: var(--text-muted-color); padding: 5px; cursor: pointer; font-size: 1.2rem; border-radius: 5px; line-height: 1; }
         #clear-history-btn:hover { color: var(--danger-color); background-color: var(--hover-color); }
-
+        
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
-        .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
-        .system-message { color: var(--text-muted-color); font-style: italic; text-align: center; }
-        .user-message, .private-message { color: var(--text-color); }
-        .private-message { font-style: italic; }
-        .user-message .username-color { color: var(--accent-color); font-weight: bold; }
-        .private-message .username-color { color: var(--private-msg-color); font-weight: bold; }
+        .message-item { display: flex; padding-bottom: 8px; word-wrap: break-word; }
+        .message-timestamp { color: var(--text-muted-color); font-size: 0.75rem; margin-right: 8px; white-space: nowrap; flex-shrink: 0; }
+        .message-content { color: var(--text-color); }
+        .system-message .message-content { color: var(--text-muted-color); font-style: italic; text-align: center; width: 100%; }
+        .private-message .message-content { font-style: italic; }
+        .username-color { font-weight: bold; }
+        .user-message .username-color { color: var(--accent-color); }
+        .private-message .username-color { color: var(--private-msg-color); }
+        
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button[type="submit"] { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
@@ -77,6 +71,7 @@
         .user-slot-header { display: flex; align-items: center; width: 100%; }
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .inactive-icon { filter: grayscale(100%); }
+        
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; }
         .action-button.voice-toggle-btn.active { color: var(--voice-active-color); }
         .action-button:hover { color: #ff4d4d; }
@@ -92,24 +87,21 @@
     <div class="app-layout">
         <div class="main-content">
             <div class="chat-area">
-                <!-- ZMIANA: Dodano kontenery widoków -->
                 <div id="public-view" class="main-view">
-                    <div class="chat-header" id="chat-header">
-                        <div class="header-left-panel"><span id="header-title">Forum</span></div>
+                    <div class="chat-header">
+                        <div class="header-left-panel"><span id="header-title-public">Forum</span></div>
                         <div class="header-right-panel"><button id="sidebar-toggle"><</button></div>
                     </div>
                     <div class="chat-windows" id="chat-windows-public"></div>
                 </div>
-
-                <div id="private-archive-view" class="main-view">
+                <div id="private-view" class="main-view">
                     <div class="chat-header">
-                        <div class="header-left-panel"><span id="header-title">Prywatne Archiwum</span></div>
+                        <div class="header-left-panel"><span id="header-title-private"></span></div>
                     </div>
                     <div class="private-chat-tabs" id="private-chat-tabs"></div>
                     <div class="chat-windows" id="chat-windows-private"></div>
                 </div>
             </div>
-
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
@@ -131,11 +123,10 @@
     
     <script>
         const ui = {
-            form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button[type="submit"]'),
+            form: document.getElementById('form'), input: document.getElementById('input'),
             micToTextBtn: document.getElementById('mic-to-text-btn'), 
-            // ZMIANA: Zaktualizowane selektory
             publicView: document.getElementById('public-view'),
-            privateArchiveView: document.getElementById('private-archive-view'),
+            privateView: document.getElementById('private-view'),
             chatWindowsPublic: document.getElementById('chat-windows-public'),
             chatWindowsPrivate: document.getElementById('chat-windows-private'),
             publicChatTabs: document.getElementById('chat-tabs'), 
@@ -143,57 +134,53 @@
             userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), 
             sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), 
             clearHistoryBtn: document.getElementById('clear-history-btn'),
+            headerTitlePrivate: document.getElementById('header-title-private')
         };
 
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
-        let storedUsername = localStorage.getItem('forumUsername');
-        
-        let localStream = null;
-        let peerConnections = {};
-        let isVoiceActive = false;
-        const audioContainer = document.createElement('div');
-        audioContainer.id = 'audio-container';
-        document.body.appendChild(audioContainer);
+        let localStream = null; let peerConnections = {}; let isVoiceActive = false;
+        const audioContainer = document.createElement('div'); audioContainer.id = 'audio-container'; document.body.appendChild(audioContainer);
 
         const hfSpaceUrl = "eosforus-chat.hf.space";
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         const historyUrl = `https://${hfSpaceUrl}/history`;
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition; let isRecording = false;
+        let recognition, isRecording = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.lang = 'pl-PL'; recognition.continuous = true; recognition.interimResults = true;
-            recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); ui.micToTextBtn.title = 'Zatrzymaj nagrywanie'; };
-            recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; if (ui.input.value.trim()) { ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); } };
-            recognition.onresult = (event) => { let final_transcript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { final_transcript += event.results[i][0].transcript; } ui.input.value = final_transcript; };
-            recognition.onerror = (event) => { console.error("Błąd rozpoznawania mowy:", event.error, event.message); isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; };
-            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { recognition.start(); } });
-        } else { console.log("Web Speech API nie jest wspierane."); ui.micToTextBtn.style.display = 'none'; }
+            Object.assign(recognition, { lang: 'pl-PL', continuous: true, interimResults: true });
+            recognition.onstart = () => { isRecording = true; ui.micToTextBtn.classList.add('listening'); };
+            recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); if (ui.input.value.trim()) ui.form.dispatchEvent(new Event('submit', { cancelable: true })); };
+            recognition.onresult = (e) => { let t = ''; for (let i = e.resultIndex; i < e.results.length; ++i) t += e.results[i][0].transcript; ui.input.value = t; };
+            recognition.onerror = (e) => { console.error("Błąd mowy:", e.error); isRecording = false; ui.micToTextBtn.classList.remove('listening'); };
+            ui.micToTextBtn.addEventListener('click', () => isRecording ? recognition.stop() : recognition.start());
+        } else { ui.micToTextBtn.style.display = 'none'; }
+        
+        async function toggleVoice() { if (isRecording) recognition.stop(); if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (err) { alert("Brak dostępu do mikrofonu."); return; } } isVoiceActive = !isVoiceActive; ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; localStream.getAudioTracks().forEach(t => t.enabled = isVoiceActive); const vBtn = document.getElementById('self-voice-toggle-btn'); if (vBtn) { vBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; vBtn.classList.toggle('active', isVoiceActive); } updateAllVoiceConnections(); }
+        async function updateAllVoiceConnections() { /* ... bez zmian ... */ }
+        function sendSignal(r, s) { /* ... bez zmian ... */ }
+        function createPeerConnection(t) { /* ... bez zmian ... */ }
+        function cleanupVoiceChat(t) { /* ... bez zmian ... */ }
+        async function handleWebRTCSignal(s, sig) { /* ... bez zmian ... */ }
+        // Skrócone funkcje WebRTC
+        async function updateAllVoiceConnections() { if (!isVoiceActive || !localStream || !sessionUsername) { Object.keys(peerConnections).forEach(cleanupVoiceChat); return; } const targets = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username); Object.keys(peerConnections).forEach(p => !targets.includes(p) && cleanupVoiceChat(p)); for (const t of targets) { if (!peerConnections[t]) { const pc = createPeerConnection(t); try { const o = await pc.createOffer(); await pc.setLocalDescription(o); sendSignal(t, { type: 'offer', sdp: o.sdp }); } catch (e) { console.error(`Błąd oferty dla ${t}:`, e); } } } }
+        function sendSignal(r, s) { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: r, signal: s } })); }
+        function createPeerConnection(t) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(t, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = e => { let a = document.getElementById(`audio-${t}`); if (!a) { a = document.createElement('audio'); a.id = `audio-${t}`; a.autoplay = true; audioContainer.appendChild(a); } a.srcObject = e.streams[0]; }; pc.onconnectionstatechange = () => (pc.connectionState === 'failed' || pc.connectionState === 'closed') && cleanupVoiceChat(t); if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); peerConnections[t] = pc; return pc; }
+        function cleanupVoiceChat(t) { if (peerConnections[t]) { peerConnections[t].close(); delete peerConnections[t]; } document.getElementById(`audio-${t}`)?.remove(); }
+        async function handleWebRTCSignal(s, sig) { let pc = peerConnections[s]; try { if (sig.type === 'offer') { if (pc) return; pc = createPeerConnection(s); await pc.setRemoteDescription(new RTCSessionDescription(sig)); const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendSignal(s, { type: 'answer', sdp: a.sdp }); } else if (sig.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription(sig)); } else if (sig.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(sig.candidate)); } } catch (err) { cleanupVoiceChat(s); } }
 
-        // --- Bez zmian w logice WebRTC ---
-        async function updateAllVoiceConnections() { if (!isVoiceActive || !localStream || !sessionUsername) { Object.keys(peerConnections).forEach(cleanupVoiceChat); return; } const currentActiveUsers = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username); let targets = (activeChat === 'public') ? currentActiveUsers : (currentActiveUsers.includes(activeChat) ? [activeChat] : []); Object.keys(peerConnections).forEach(peer => !targets.includes(peer) && cleanupVoiceChat(peer)); for (const target of targets) { if (!peerConnections[target]) { const pc = createPeerConnection(target); try { const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal(target, { type: 'offer', sdp: offer.sdp }); } catch (e) { console.error(`Błąd tworzenia oferty dla ${target}:`, e); } } } }
-        function sendSignal(recipient, signal) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
-        function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = event => { let audio = document.getElementById(`audio-${targetUser}`); if (!audio) { audio = document.createElement('audio'); audio.id = `audio-${targetUser}`; audio.autoplay = true; audio.playsInline = true; audioContainer.appendChild(audio); } audio.srcObject = event.streams[0]; }; pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser); if (localStream) { localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); } peerConnections[targetUser] = pc; return pc; }
-        function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); }
-        async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
-        async function toggleVoice() { if (isRecording) { recognition.stop(); } if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (err) { alert("Nie udało się uzyskać dostępu do mikrofonu dla rozmów głosowych."); return; } } isVoiceActive = !isVoiceActive; ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive); const voiceBtn = document.getElementById('self-voice-toggle-btn'); if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos (jesteś słyszalny)' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); } updateAllVoiceConnections(); }
-
-        // ZMIANA: Zaktualizowana funkcja tworzenia okna czatu
         function createChatWindow(id, name, isPrivate) {
             const container = isPrivate ? ui.chatWindowsPrivate : ui.chatWindowsPublic;
             if (document.getElementById(`messages-${id}`)) return;
             const messagesDiv = document.createElement('ul');
-            messagesDiv.className = 'messages';
-            messagesDiv.id = `messages-${id}`;
+            messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`;
             container.appendChild(messagesDiv);
 
             const tabContainer = isPrivate ? ui.privateChatTabs : ui.publicChatTabs;
             const tabButton = document.createElement('button');
-            tabButton.className = 'tab-button';
-            tabButton.textContent = name;
-            tabButton.id = `tab-${id}`;
+            tabButton.className = 'tab-button'; tabButton.textContent = name; tabButton.id = `tab-${id}`;
             tabButton.onclick = () => isPrivate ? switchPrivateChat(id) : showPublicChat();
             
             if (isPrivate) {
@@ -205,55 +192,40 @@
             tabContainer.appendChild(tabButton);
         }
         
-        // ZMIANA: Nowe funkcje do zarządzania widokami
         function showPublicChat() {
-            ui.publicView.style.display = 'flex';
-            ui.privateArchiveView.style.display = 'none';
+            ui.publicView.style.display = 'flex'; ui.privateView.style.display = 'none';
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-public').classList.add('active');
             activeChat = 'public';
+            ui.headerTitlePrivate.textContent = '';
         }
         
-        function showPrivateArchive() {
+        function showMyPrivateArchive() {
             if (!sessionUsername) return;
-            ui.publicView.style.display = 'none';
-            ui.privateArchiveView.style.display = 'flex';
+            ui.publicView.style.display = 'none'; ui.privateView.style.display = 'flex';
             socket.send(JSON.stringify({ type: "get_my_private_chats" }));
-            // Aktywuj pierwszą zakładkę, jeśli istnieje
             const firstTab = ui.privateChatTabs.querySelector('.tab-button');
-            if (firstTab) {
-                switchPrivateChat(firstTab.id.replace('tab-', ''));
-            } else {
-                activeChat = null; // Brak otwartych czatów
-            }
+            if (firstTab) switchPrivateChat(firstTab.id.replace('tab-', ''));
+            else { activeChat = null; ui.headerTitlePrivate.textContent = 'Brak rozmów'; }
         }
 
         function switchPrivateChat(partner) {
             activeChat = partner;
             document.querySelectorAll('#chat-windows-private .messages').forEach(el => el.style.display = 'none');
-            const chatWindow = document.getElementById(`messages-${partner}`);
-            if (chatWindow) chatWindow.style.display = 'block';
-
+            document.getElementById(`messages-${partner}`)?.style.display = 'block';
             document.querySelectorAll('#private-chat-tabs .tab-button').forEach(el => el.classList.remove('active'));
             const tab = document.getElementById(`tab-${partner}`);
-            if (tab) {
-                tab.classList.add('active');
-                tab.classList.remove('has-unread');
-            }
+            if (tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); }
+            ui.headerTitlePrivate.textContent = `Rozmowa z: ${partner}`;
         }
         
         function closePrivateChat(id) {
             document.getElementById(`tab-${id}`)?.remove();
             document.getElementById(`messages-${id}`)?.remove();
-            // TODO: W przyszłości można dodać logikę usuwania pliku na serwerze
-            
             if (activeChat === id) {
                 const nextTab = ui.privateChatTabs.querySelector('.tab-button');
-                if (nextTab) {
-                    switchPrivateChat(nextTab.id.replace('tab-', ''));
-                } else {
-                    activeChat = null;
-                }
+                if (nextTab) switchPrivateChat(nextTab.id.replace('tab-', ''));
+                else { activeChat = null; ui.headerTitlePrivate.textContent = 'Brak rozmów'; }
             }
         }
 
@@ -261,56 +233,60 @@
             const mDiv = document.getElementById(`messages-${targetChatId}`);
             if (!mDiv) return;
             const i = document.createElement('li');
-            if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; }
-            else {
+            i.className = 'message-item';
+            
+            const time = new Date(data.timestamp).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            
+            let contentHTML = '';
+            if (data.username === "System") {
+                contentHTML = `<div class="message-content system-message">${data.message}</div>`;
+            } else {
                 const senderName = data.sender || data.username;
-                i.className = targetChatId === 'public' ? 'user-message' : 'private-message';
-                i.innerHTML = `<span class="username-color">${senderName}</span>: ${data.message}`;
+                const messageClass = targetChatId === 'public' ? 'user-message' : 'private-message';
+                contentHTML = `<span class="message-timestamp">${time}</span>
+                               <div class="message-content ${messageClass}">
+                                 <span class="username-color">${senderName}</span>: ${data.message}
+                               </div>`;
             }
+            i.innerHTML = contentHTML;
             mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight;
         }
         
         function renderUsers(users) {
-            allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
+            allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser?.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
-            ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive;
-            ui.micToTextBtn.disabled = !isActive;
+            ui.input.disabled = !isActive; ui.micToTextBtn.disabled = !isActive;
             if (isActive) { ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; } 
             else { ui.micToTextBtn.style.display = 'flex'; }
-            ui.input.placeholder = isActive ? "Wpisz swoją wiadomość lub naciśnij mikrofon..." : "Zaloguj się, aby rozmawiać...";
-            if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; }
-            if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } 
-            else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
-            ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
-            users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username))
+            if (!users.some(u => u.username === localStorage.getItem('forumUsername'))) localStorage.removeItem('forumUsername');
+            if (isActive) { ui.newUserSlot.style.display = 'none'; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
+            
+            ui.userSlotsContainer.innerHTML = '';
+            users.sort((a, b) => (a.role.localeCompare(b.role)) || a.username.localeCompare(b.username))
                  .forEach(user => {
-                     const isMyStoredIdentity = user.username === storedUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; const header = document.createElement('div'); header.className = 'user-slot-header';
-                     let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ ';
+                     const isSelf = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status}`;
+                     let roleIcon = user.role === 'moderator' ? '👑 ' : user.role === 'vip' ? '⭐ ' : '';
                      let nameHTML = roleIcon + user.username; let actionsHTML = '';
-                     if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; const voiceTitle = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="${voiceTitle}">${voiceIcon}</button>`; actionsHTML += `<button class="action-button self-action-button" title="Akcje konta">×</button>`; } 
-                     else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`; }
+                     if (isSelf && isActive) { nameHTML += ' (Ty)'; const vIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive?'active':''}" title="Głos">${vIcon}</button><button class="action-button self-action-button" title="Konto">×</button>`; } 
+                     else if (isModerator && !isSelf) { actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń">×</button>`; }
+                     
+                     const header = document.createElement('div'); header.className = 'user-slot-header';
                      header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header);
-                     const nameElement = header.querySelector('.user-name');
+                     const nameEl = header.querySelector('.user-name');
+
+                     if (isActive && isSelf) nameEl.onclick = showMyPrivateArchive;
+                     else if (isActive && !isSelf && user.status === 'active') nameEl.onclick = () => openPrivateChat(user.username);
+                     else if (user.status === 'inactive') nameEl.onclick = () => showLoginForm(slot, user.username);
+                     else nameEl.style.cursor = 'default';
                      
-                     // ZMIANA: Logika kliknięć
-                     if (isMyStoredIdentity && isActive) {
-                         nameElement.onclick = () => showPrivateArchive();
-                         nameElement.style.cursor = 'pointer';
-                     } else if (user.status === 'inactive') {
-                         nameElement.onclick = () => showLoginForm(slot, user.username, false);
-                         nameElement.style.cursor = 'pointer';
-                     } else {
-                         nameElement.style.cursor = 'default';
-                     }
-                     
-                     const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); };
-                     const selfActionBtn = header.querySelector('.self-action-button'); if(selfActionBtn) selfActionBtn.onclick = (e) => { e.stopPropagation(); showSelfActionMenu(slot, user.role !== 'user'); };
-                     const removeBtn = header.querySelector('.remove-user-button'); if (removeBtn) removeBtn.onclick = (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } })); };
+                     header.querySelector('#self-voice-toggle-btn')?.addEventListener('click', (e) => { e.stopPropagation(); toggleVoice(); });
+                     header.querySelector('.self-action-button')?.addEventListener('click', (e) => { e.stopPropagation(); showSelfActionMenu(slot, user.role !== 'user'); });
+                     header.querySelector('.remove-user-button')?.addEventListener('click', (e) => { e.stopPropagation(); socket.send(JSON.stringify({ type: 'remove_user', payload: { username: e.target.dataset.user } })); });
                      ui.userSlotsContainer.appendChild(slot);
                  });
         }
 
-        function resetSession() { Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } isVoiceActive = false; sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; ui.micToTextBtn.style.display = 'flex'; renderUsers(allUsers); }
+        function resetSession() { Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } isVoiceActive = false; sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; ui.micToTextBtn.style.display = 'flex'; renderUsers(allUsers); }
 
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
@@ -322,72 +298,73 @@
                     case 'chat_message': addMessage(data.payload, 'public'); break;
                     case 'private_message':
                         const partner = data.payload.sender === sessionUsername ? data.payload.recipient : data.payload.sender;
-                        // Jeśli widok archiwum jest aktywny, dodaj wiadomość
-                        if (ui.privateArchiveView.style.display === 'flex') {
-                            if (!document.getElementById(`messages-${partner}`)) {
-                                createChatWindow(partner, `Rozmowa z: ${partner}`, true);
-                            }
-                            addMessage(data.payload, partner);
+                        if (ui.privateView.style.display === 'flex' && document.getElementById(`messages-${partner}`)) {
+                             addMessage(data.payload, partner);
                         }
-                        if (data.payload.sender !== sessionUsername && document.getElementById(`tab-${partner}`)) {
-                            document.getElementById(`tab-${partner}`).classList.add('has-unread');
-                        }
+                        const tab = document.getElementById(`tab-${partner}`);
+                        if (tab && data.payload.sender !== sessionUsername) tab.classList.add('has-unread');
                         break;
-                    
-                    // ZMIANA: Obsługa archiwum
+                    case 'private_history':
                     case 'my_private_chats':
-                        ui.privateChatTabs.innerHTML = '';
-                        ui.chatWindowsPrivate.innerHTML = '';
-                        const chats = data.payload.chats;
-                        for (const partner in chats) {
-                            createChatWindow(partner, `Rozmowa z: ${partner}`, true);
-                            const messagesDiv = document.getElementById(`messages-${partner}`);
+                        const chats = data.payload.chats || { [data.payload.partner]: data.payload.history };
+                        for (const p in chats) {
+                            if (!document.getElementById(`messages-${p}`)) createChatWindow(p, `${p}`, true);
+                            const messagesDiv = document.getElementById(`messages-${p}`);
                             if (messagesDiv) {
-                                chats[partner].forEach(msg => addMessage(msg, partner));
+                                messagesDiv.innerHTML = '';
+                                chats[p].forEach(msg => addMessage(msg, p));
                             }
                         }
-                        // Po załadowaniu, aktywuj pierwszą zakładkę
-                        const firstTab = ui.privateChatTabs.querySelector('.tab-button');
-                        if (firstTab) {
-                            switchPrivateChat(firstTab.id.replace('tab-', ''));
+                        if(data.type === 'my_private_chats') {
+                           const firstTab = ui.privateChatTabs.querySelector('.tab-button');
+                           if (firstTab) switchPrivateChat(firstTab.id.replace('tab-',''));
                         }
                         break;
-
-                    case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
-                    case 'join_success': sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms(); break;
-                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
-                    case 'webrtc_signal': if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
+                    case 'history_cleared': document.getElementById('messages-public').innerHTML = ''; addMessage({username:'System', message:'Czat wyczyszczony'}, 'public'); break;
+                    case 'join_success': sessionUsername = data.payload.username; localStorage.setItem('forumUsername', sessionUsername); removeActiveForms(); break;
+                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); break;
+                    case 'webrtc_signal': handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
                 }
             };
             socket.onclose = () => { resetSession(); setTimeout(connectWebSocket, 3000); };
-            socket.onerror = (e) => { console.error("WebSocket error:", e); resetSession(); }
+            socket.onerror = (e) => { console.error("Błąd WebSocket:", e); }
         }
         
+        function openPrivateChat(targetUser) {
+            showMyPrivateArchive(); // Zawsze przełączaj do widoku prywatnego
+            if (!document.getElementById(`messages-${targetUser}`)) {
+                createChatWindow(targetUser, `${targetUser}`, true);
+            }
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: "get_private_history", payload: { partner: targetUser }}));
+            }
+            // Opóźnienie, aby dać czas na stworzenie zakładki przed przełączeniem
+            setTimeout(() => switchPrivateChat(targetUser), 100);
+        }
+
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
-        function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
-        function showSelfActionMenu(slot, isPermanentAccount) { removeActiveForms(); const menu = document.createElement('div'); menu.className = 'action-menu'; let menuHTML = ''; if (isPermanentAccount) { menuHTML += `<button class="logout-btn">Wyloguj</button>`; } menuHTML += `<button class="delete-btn">Usuń konto</button>`; menu.innerHTML = menuHTML; slot.appendChild(menu); const logoutBtn = menu.querySelector('.logout-btn'); if(logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; } menu.querySelector('.delete-btn').onclick = () => { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); storedUsername = null; removeActiveForms(); }; }
-        function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
-        function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
+        function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.remove()); }
+        function showSelfActionMenu(slot, isPermanent) { removeActiveForms(); const menu = document.createElement('div'); menu.className = 'action-menu'; let html = ''; if (isPermanent) html += `<button class="logout-btn">Wyloguj</button>`; html += `<button class="delete-btn">Usuń konto</button>`; menu.innerHTML = html; slot.appendChild(menu); menu.querySelector('.logout-btn')?.addEventListener('click', () => socket.send(JSON.stringify({ type: 'leave' }))); menu.querySelector('.delete-btn')?.addEventListener('click', () => { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); }); }
+        function showLoginForm(slot, uname, isNew = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; form.innerHTML = (isNew ? `<input type="text" name="username" placeholder="Twoja nazwa..." required>` : '') + `<input type="password" name="password" placeholder="Hasło"><button type="submit">${isNew?'Dołącz':'Zaloguj'}</button>`; form.onclick = e => e.stopPropagation(); slot.querySelector('.user-name').style.cursor = 'default'; form.onsubmit = e => { e.preventDefault(); const user = isNew ? form.querySelector('[name=username]').value.trim() : uname; const pass = form.querySelector('[name=password]').value.trim(); if (user) socket.send(JSON.stringify({ type: 'join', payload: { username: user, password: pass } })); }; slot.appendChild(form); form.querySelector(isNew ? '[name=username]' : '[name=password]').focus(); }
+        function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; slot.innerHTML = '<div class="user-slot-header"><span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span></div>'; slot.onclick = () => { slot.innerHTML = ''; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
 
         ui.form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const message = ui.input.value.trim();
-            if (!message || !sessionUsername) return;
+            const msg = ui.input.value.trim();
+            if (!msg || !sessionUsername) return;
             const type = activeChat === 'public' ? 'chat_message' : 'private_message';
-            const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
+            const payload = type === 'chat_message' ? { message: msg } : { recipient: activeChat, message: msg };
             socket.send(JSON.stringify({ type, payload }));
-            const messageData = type === 'chat_message' ? { username: sessionUsername, message: message } : { sender: sessionUsername, recipient: activeChat, message: message };
-            addMessage(messageData, activeChat);
+            const msgData = type === 'chat_message' ? { username: sessionUsername, message: msg, timestamp: new Date().toISOString() } : { sender: sessionUsername, recipient: activeChat, message: msg, timestamp: new Date().toISOString() };
+            addMessage(msgData, activeChat);
             ui.input.value = '';
         });
 
-        ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
+        ui.sidebarToggle.addEventListener('click', () => ui.sidebar.classList.toggle('collapsed'));
         ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator) socket.send(JSON.stringify({ type: 'clear_history' })); });
 
-        // Inicjalizacja: stwórz okno publiczne i je pokaż
         createChatWindow('public', 'Czat Publiczny', false);
         showPublicChat();
-
         connectWebSocket();
     </script>
 </body>
