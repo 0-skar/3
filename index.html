@@ -9,7 +9,8 @@
             --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
             --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
-            --notification-color: #28a745; --danger-color: #dc3545; --voice-active-color: #43b581;
+            --notification-color: #198754; /* ZMIANA: Ciemny, widoczny zielony */
+            --danger-color: #dc3545; --voice-active-color: #43b581;
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
             --header-height: 52px;
         }
@@ -60,9 +61,27 @@
         .tab-button .close-tab-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; padding-left: 8px; line-height: 1; }
         .close-tab-btn:hover { color: var(--text-color); }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
-        .relationship-icon { cursor: pointer; margin-right: 8px; font-size: 0.9em; transition: color 0.2s; color: var(--text-muted-color); }
-        .relationship-icon.favorite { color: var(--notification-color); }
-        .relationship-icon.blocked { color: var(--danger-color); }
+        
+        .relationship-icon {
+            cursor: pointer;
+            margin-right: 8px;
+            transition: color 0.2s;
+            color: var(--private-msg-color); /* Domyślny kolor żółty */
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+        }
+        .relationship-icon svg {
+            width: 1.1em;
+            height: 1.1em;
+        }
+        .relationship-icon.favorite {
+            color: var(--notification-color); /* Zielony */
+        }
+        .relationship-icon.blocked {
+            color: var(--danger-color); /* Czerwony */
+        }
+
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
         .user-slot.inactive { opacity: 0.6; }
         .user-slot.blocked-by-user { background-color: #4d2a2a; border-color: var(--danger-color); }
@@ -116,6 +135,9 @@
         const hfSpaceUrl = "eosforus-chat.hf.space", wsUrl = `wss://${hfSpaceUrl}/ws/`, historyUrl = `https://${hfSpaceUrl}/history`;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition, isRecording = false;
+
+        const THUMB_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path></svg>`;
+        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition(); recognition.lang = 'pl-PL'; recognition.continuous = true; recognition.interimResults = true;
@@ -182,14 +204,22 @@
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
             if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return;
+
             const status = currentUserData.relationships[partner] || 'neutral';
+            
             icon.classList.remove('favorite', 'blocked');
+
             if (status === 'favorite') {
-                icon.innerHTML = '👍'; icon.classList.add('favorite'); icon.title = 'Ulubiony (będziesz otrzymywać powiadomienia)';
+                icon.innerHTML = THUMB_UP_SVG;
+                icon.classList.add('favorite');
+                icon.title = 'Użytkownik specjalny (otrzymujesz powiadomienia)';
             } else if (status === 'blocked') {
-                icon.innerHTML = '👎'; icon.classList.add('blocked'); icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
-            } else {
-                icon.innerHTML = '👍'; icon.title = 'Neutralny';
+                icon.innerHTML = THUMB_DOWN_SVG;
+                icon.classList.add('blocked');
+                icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
+            } else { // Neutral
+                icon.innerHTML = THUMB_UP_SVG;
+                icon.title = 'Użytkownik neutralny';
             }
         }
 
