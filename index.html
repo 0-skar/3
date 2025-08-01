@@ -23,7 +23,6 @@
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
         
-        /* ZMIANA: Style dla widoków i nagłówków */
         .view { display: none; flex-direction: column; flex-grow: 1; min-height: 0; }
         .view.active { display: flex; }
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background-color: var(--background-color); }
@@ -63,7 +62,6 @@
 
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
         
-        /* ZMIANA: Style dla wiadomości i daty */
         .system-message, .user-message, .private-message { padding: 2px 0; word-wrap: break-word; display: flex; align-items: baseline; }
         .message-timestamp { color: var(--text-muted-color); font-size: 0.8em; margin-right: 8px; flex-shrink: 0; }
         .message-content { flex-grow: 1; }
@@ -104,7 +102,6 @@
 <body>
     <div class="app-layout">
         <div class="main-content">
-            <!-- ZMIANA: Dodano kontenery widoków -->
             <div id="public-view" class="view active">
                 <div class="chat-area">
                     <div class="chat-header">
@@ -131,7 +128,6 @@
                     <div class="chat-windows" id="private-chat-windows"></div>
                 </div>
             </div>
-            <!-- KONIEC ZMIANY -->
 
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
@@ -160,7 +156,6 @@
             userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), 
             sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), 
             clearHistoryBtn: document.getElementById('clear-history-btn'), privateChatIndicator: document.getElementById('private-chat-indicator'),
-            // ZMIANA: Nowe elementy UI
             publicView: document.getElementById('public-view'),
             personalSpaceView: document.getElementById('personal-space-view'),
             personalSpaceTitle: document.getElementById('personal-space-title'),
@@ -172,7 +167,7 @@
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
         let storedUsername = localStorage.getItem('forumUsername');
         let lastPrivateChatPartner = null;
-        let openedPrivateChats = new Set(); // Przechowuje nazwy otwartych prywatnych czatów
+        let openedPrivateChats = new Set();
 
         let localStream = null;
         let peerConnections = {};
@@ -212,7 +207,6 @@
         async function handleWebRTCSignal(sender, signal) { /* ... bez zmian ... */ }
         async function toggleVoice() { /* ... bez zmian ... */ }
 
-        // ZMIANA: Logika zmiany widoków
         function showView(viewName) {
             ui.publicView.classList.remove('active');
             ui.personalSpaceView.classList.remove('active');
@@ -228,12 +222,10 @@
             const messagesDiv = document.createElement('ul');
             messagesDiv.className = 'messages';
             messagesDiv.id = `messages-${id}`;
-            messagesDiv.style.display = 'none'; // Domyślnie ukryte
+            messagesDiv.style.display = 'none';
 
             if (isPrivate) {
                 ui.privateChatWindows.appendChild(messagesDiv);
-            } else {
-                // Publiczny czat jest już w HTML, więc tylko go obsługujemy
             }
         }
         
@@ -260,52 +252,41 @@
 
         function switchChat(id) {
             activeChat = id;
-            
             document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
             const chatWindow = document.getElementById(`messages-${id}`);
             if (chatWindow) chatWindow.style.display = 'block';
 
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-            
             const publicTab = document.getElementById('tab-public');
             if(publicTab) publicTab.classList.toggle('active', id === 'public');
-            
             const privateTab = document.getElementById(`tab-private-${id}`);
             if (privateTab) {
                 privateTab.classList.add('active');
                 privateTab.classList.remove('has-unread');
             }
-            
             if (id !== 'public' && ui.privateChatIndicator.textContent === id) {
                 ui.privateChatIndicator.classList.remove('has-unread');
             }
-
             updateAllVoiceConnections();
         }
 
-        function addMessage(data, targetChatId) {
+        function addMessage(data, targetChatId) { 
             const mDiv = document.getElementById(`messages-${targetChatId}`);
             if (!mDiv) return;
-
             const i = document.createElement('li');
             const senderName = data.sender || data.username;
-            
             i.className = (data.sender) ? 'private-message' : 'user-message';
             if(data.username === 'System') i.className = 'system-message';
-
             const timestampSpan = `<span class="message-timestamp">${data.timestamp || ''}</span>`;
-            
             if (data.username === 'System') {
                 i.innerHTML = `<div class="message-content">${data.message}</div>`;
             } else {
                 i.innerHTML = `${timestampSpan}<div class="message-content"><span class="username-color">${senderName}</span>: ${data.message}</div>`;
             }
-            
             mDiv.appendChild(i);
             mDiv.scrollTop = mDiv.scrollHeight;
         }
         
-        function renderUsers(users) { /* ... bez zmian ... */ }
         function resetSession() { /* ... bez zmian ... */ }
 
         function connectWebSocket() {
@@ -318,14 +299,10 @@
                     case 'chat_message': addMessage(data.payload, 'public'); break;
                     case 'private_message':
                         const chatPartner = data.payload.sender === sessionUsername ? data.payload.recipient : data.payload.sender;
-                        
-                        // Zapewnij, że okno i zakładka istnieją, jeśli otrzymamy wiadomość
                         if (!openedPrivateChats.has(chatPartner)) {
-                           openPrivateChat(chatPartner, false); // Otwórz w tle
+                           openPrivateChat(chatPartner, false);
                         }
-
                         addMessage(data.payload, chatPartner);
-
                         if (data.payload.sender !== sessionUsername) {
                             if (activeChat !== chatPartner || ui.publicView.classList.contains('active')) { 
                                 ui.privateChatIndicator.classList.add('has-unread');
@@ -349,7 +326,6 @@
                         break;
                     case 'join_success':
                         sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
-                        // Po zalogowaniu stwórz zakładkę czatu publicznego
                         createPublicChatTab();
                         break;
                     case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
@@ -364,7 +340,6 @@
             document.getElementById(`tab-private-${id}`)?.remove();
             document.getElementById(`messages-${id}`)?.remove();
             openedPrivateChats.delete(id);
-
             if (lastPrivateChatPartner === id) {
                 const nextTab = ui.personalSpaceTabs.querySelector('.tab-button');
                 lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null;
@@ -388,18 +363,14 @@
         function openPrivateChat(targetUser, shouldSwitchView = true) {
             const currentUser = allUsers.find(u => u.username === sessionUsername);
             const target = allUsers.find(u => u.username === targetUser);
-
-            // Zezwalaj na czat tylko między stałymi użytkownikami
             if (currentUser?.role === 'user' || target?.role === 'user') {
                 if(shouldSwitchView) alert("Tylko stali użytkownicy (VIP, Moderator) mogą korzystać z prywatnych, zapisywanych wiadomości.");
                 return;
             }
-            
             createChatWindow(targetUser, true);
             openedPrivateChats.add(targetUser);
-
             if (shouldSwitchView) {
-                if (socket && socket.readyState === WebSocket.OPEN) {
+                if (socket && socket.readyState === WebSocket.OPEN && targetUser !== sessionUsername) {
                     socket.send(JSON.stringify({
                         type: "get_private_history",
                         payload: { partner: targetUser }
@@ -408,20 +379,14 @@
             }
         }
 
-        // ZMIANA: Nowa funkcja do wejścia w przestrzeń prywatną
         function enterPersonalSpace(clickedUser) {
             if (!sessionUsername) return;
             showView('personal');
             ui.personalSpaceTitle.textContent = `Twoja przestrzeń: ${sessionUsername}`;
-            
-            // Otwórz czat z klikniętym użytkownikiem, jeśli nie jest to "ja"
             if (clickedUser !== sessionUsername) {
                 openPrivateChat(clickedUser, true);
             }
-            
             renderPersonalSpaceTabs();
-            
-            // Przełącz na czat z klikniętym użytkownikiem lub na pierwszy z listy
             const targetChat = clickedUser !== sessionUsername ? clickedUser : [...openedPrivateChats][0];
             if (targetChat) {
                 switchChat(targetChat);
@@ -429,7 +394,7 @@
         }
         
         function createPublicChatTab() {
-            ui.publicChatTabs.innerHTML = ''; // Wyczyść na wypadek ponownego logowania
+            ui.publicChatTabs.innerHTML = '';
             const tabButton = document.createElement('button');
             tabButton.className = 'tab-button active';
             tabButton.textContent = 'Czat Publiczny';
@@ -442,12 +407,12 @@
         }
 
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
-        function removeActiveForms() { /* ... bez zmian ... */ }
+        function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
         function showSelfActionMenu(slot, isPermanentAccount) { /* ... bez zmian ... */ }
         function showLoginForm(slot, targetUsername, isNewUser = false) { /* ... bez zmian ... */ }
         function createRegistrationSlot() { /* ... bez zmian ... */ }
 
-        // Modyfikacja `renderUsers` aby używać `enterPersonalSpace`
+        // ZMIANA: Modyfikacja renderUsers
         function renderUsers(users) {
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
@@ -456,7 +421,18 @@
             if (isActive) { ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; } else { ui.micToTextBtn.style.display = 'flex'; }
             ui.input.placeholder = isActive ? "Wpisz swoją wiadomość lub naciśnij mikrofon..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername) { if (!users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } }
-            if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
+            
+            // KLUCZOWA ZMIANA: Zapobiega nadpisywaniu formularza logowania
+            if (storedUsername && isActive) {
+                ui.newUserSlot.style.display = 'none';
+                ui.newUserSlot.innerHTML = '';
+            } else {
+                ui.newUserSlot.style.display = 'block';
+                if (ui.newUserSlot.innerHTML.trim() === '') {
+                    createRegistrationSlot();
+                }
+            }
+
             ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
             users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username))
                  .forEach(user => {
