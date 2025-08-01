@@ -27,7 +27,6 @@
         .private-chat-tabs { flex-wrap: wrap; gap: 5px; height: auto; padding: 5px 10px; flex-shrink: 0; display: none; align-items: center; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
         
-        /* ZMIANA: Dodano style dla nowego kontenera nagłówka w panelu bocznym */
         .sidebar-heading {
             display: flex;
             justify-content: space-between;
@@ -41,7 +40,6 @@
             text-transform: uppercase;
             color: var(--text-muted-color);
         }
-        /* KONIEC ZMIANY */
 
         .header-left-panel { display: flex; align-items: center; gap: 20px; }
         .header-right-panel { display: flex; align-items: center; gap: 10px; }
@@ -56,7 +54,6 @@
         .user-slots-area { padding: 0 10px 10px 10px; flex-grow: 1; overflow-y: auto; }
         #header-title { color: var(--private-msg-color); font-weight: bold; font-size: clamp(1rem, 4vw, 1.25rem); }
 
-        /* ZMIANA: Zaktualizowano style przycisku czyszczenia */
         #clear-history-btn {
             display: none;
             background: none;
@@ -72,7 +69,6 @@
             color: var(--danger-color);
             background-color: var(--hover-color);
         }
-        /* KONIEC ZMIANY */
 
         .messages { list-style-type: none; margin: 0; padding: 15px; position: absolute; top: 0; bottom: 0; left: 0; right: 0; overflow-y: auto; font-size: clamp(0.9rem, 2.5vw, 1rem); }
         .system-message, .user-message, .private-message { padding-bottom: 8px; word-wrap: break-word; }
@@ -83,7 +79,27 @@
         .private-message .username-color { color: var(--private-msg-color); font-weight: bold; }
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button[type="submit"] { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
-        #mic-to-text-btn { background: none; border: none; color: var(--text-muted-color); padding: 8px; margin-left: 10px; font-size: 1.5rem; cursor: pointer; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+        
+        /* ZMIANA: Zaktualizowano margines dla mikrofonu */
+        #mic-to-text-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted-color);
+            padding: 8px;
+            margin-right: 10px; /* Zamiast margin-left */
+            font-size: 1.5rem;
+            cursor: pointer;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+            flex-shrink: 0; /* Zapobiega kurczeniu się przycisku */
+        }
+        /* KONIEC ZMIANY */
+
         #mic-to-text-btn:hover:not(:disabled) { background-color: var(--hover-color); }
         #mic-to-text-btn.listening { color: var(--danger-color); animation: pulse 1.5s infinite; }
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; position: relative; }
@@ -126,22 +142,22 @@
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
-                    <!-- ZMIANA: Przycisk czyszczenia jest teraz tutaj -->
                     <div class="sidebar-heading">
                         <h3>Użytkownicy</h3>
                         <button id="clear-history-btn" title="Wyczyść cały czat publiczny">🗑️</button>
                     </div>
-                    <!-- KONIEC ZMIANY -->
                     <div id="user-slots-container"></div>
                     <div id="new-user-slot"></div>
                 </div>
             </div>
         </div>
+        <!-- ZMIANA: Zmieniono kolejność elementów w formularzu -->
         <form id="form" action="">
-            <input id="input" autocomplete="off" placeholder="Zaloguj się, aby rozmawiać..." disabled />
             <button type="button" id="mic-to-text-btn" title="Nagraj wiadomość głosową" disabled>🎤</button>
+            <input id="input" autocomplete="off" placeholder="Zaloguj się, aby rozmawiać..." disabled />
             <button type="submit" disabled>Wyślij</button>
         </form>
+        <!-- KONIEC ZMIANY -->
     </div>
     
     <script>
@@ -286,7 +302,6 @@
         function renderUsers(users) {
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
             
-            // Logika widoczności przycisku czyszczenia
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
 
             ui.input.disabled = !isActive;
