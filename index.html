@@ -132,7 +132,6 @@
         .inactive-icon { filter: grayscale(100%); }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; transition: color 0.2s; }
         .action-button.voice-toggle-btn.active { color: var(--voice-active-color); }
-        /* ZMIANA: Nowa klasa do podświetlania "x" na czerwono */
         .action-button.active-danger { color: var(--danger-color); }
         .action-button:hover { color: #ff4d4d; }
         .action-button.voice-toggle-btn:hover { color: var(--voice-active-color); }
@@ -307,7 +306,7 @@
             if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight;
         }
         
-        // ZMIANA: Główna zmiana w logice renderowania przycisków i ich obsługi
+        // ZMIANA: Główna aktualizacja logiki renderowania i obsługi przycisków
         function renderUsers(users) {
             allUsers = users;
             const currentUser = users.find(u => u.username === sessionUsername);
@@ -344,10 +343,10 @@
                         const voiceIcon = isVoiceActive ? '🔊' : '🔈';
                         const voiceTitle = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos';
                         actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="${voiceTitle}">${voiceIcon}</button>`;
-                        // ZMIANA: Przycisk "x" ma teraz ID dla łatwiejszego dostępu
                         actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`;
                     } else if (isModerator && user.username !== sessionUsername) {
-                        actionsHTML += `<button class="action-button remove-user-button" data-user="${user.username}" title="Usuń użytkownika">×</button>`;
+                        // ZMIANA: Przycisk moderatora również ma teraz unikalne ID
+                        actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`;
                     }
                     
                     header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`;
@@ -355,48 +354,51 @@
                     
                     const nameElement = header.querySelector('.user-name');
                     if (isActive) {
-                        if (user.username !== sessionUsername) {
-                            nameElement.onclick = () => openPrivateChat(user.username);
-                        } else {
-                            nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } };
-                        }
+                        if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } 
+                        else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; }
                     } else {
                         if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } 
                         else { nameElement.style.cursor = 'default'; }
                     }
 
-                    // ZMIANA: Nowa, rozbudowana logika obsługi przycisku akcji "x"
+                    // Obsługa przycisku akcji dla zalogowanego użytkownika
                     const selfActionBtn = header.querySelector('#self-action-toggle-btn');
                     if (selfActionBtn) {
                         selfActionBtn.onclick = (e) => {
                             e.stopPropagation();
                             const existingMenu = slot.querySelector('.action-menu');
-                            
                             if (existingMenu) {
-                                // Jeśli menu jest otwarte, zamknij je i odznacz przycisk
                                 existingMenu.remove();
                                 selfActionBtn.classList.remove('active-danger');
                             } else {
-                                // Jeśli menu jest zamknięte, otwórz je
-                                removeActiveForms(); // Najpierw zamknij wszystkie inne otwarte menu/formularze
-                                showSelfActionMenu(slot, user.role !== 'user'); // Stwórz i pokaż menu
-                                selfActionBtn.classList.add('active-danger'); // Podświetl przycisk na czerwono
+                                removeActiveForms();
+                                showSelfActionMenu(slot, user.role !== 'user');
+                                selfActionBtn.classList.add('active-danger');
                             }
                         };
+                    }
+                    
+                    // ZMIANA: Obsługa przycisku akcji dla moderatora
+                    const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`);
+                    if (modActionBtn) {
+                        modActionBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            const targetUsername = modActionBtn.dataset.user;
+                            const existingMenu = slot.querySelector('.action-menu');
+                             if (existingMenu) {
+                                existingMenu.remove();
+                                modActionBtn.classList.remove('active-danger');
+                            } else {
+                                removeActiveForms();
+                                showModeratorActionMenu(slot, targetUsername);
+                                modActionBtn.classList.add('active-danger');
+                            }
+                        }
                     }
 
                     const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn');
                     if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); };
-                    
-                    const removeBtn = header.querySelector('.remove-user-button');
-                    if (removeBtn) {
-                        removeBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            if (confirm(`Czy na pewno chcesz usunąć na stałe użytkownika ${removeBtn.dataset.user}?`)) {
-                                socket.send(JSON.stringify({ type: 'remove_user', payload: { username: removeBtn.dataset.user } }));
-                            }
-                        };
-                    }
+
                     ui.userSlotsContainer.appendChild(slot);
                 });
         }
@@ -440,7 +442,7 @@
                         if (messagesDiv) { messagesDiv.innerHTML = ''; history.forEach(msg => addMessage(msg, partner)); }
                         break;
                     case 'join_success': sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms(); break;
-                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); renderUsers(allUsers); break;
+                    case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); removeActiveForms(); renderUsers(allUsers); break;
                     case 'webrtc_signal': if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
                 }
             };
@@ -450,44 +452,45 @@
         
         function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         
-        function openPrivateChat(targetUser) {
-            removeActiveForms();
-            createChatWindow(targetUser, `Priv: ${targetUser}`);
-            if (socket && socket.readyState === WebSocket.OPEN && targetUser !== sessionUsername) {
-                socket.send(JSON.stringify({ type: "get_private_history", payload: { partner: targetUser } }));
-            }
-            switchChat(targetUser);
-        }
+        function openPrivateChat(targetUser) { removeActiveForms(); createChatWindow(targetUser, `Priv: ${targetUser}`); if (socket && socket.readyState === WebSocket.OPEN && targetUser !== sessionUsername) { socket.send(JSON.stringify({ type: "get_private_history", payload: { partner: targetUser } })); } switchChat(targetUser); }
 
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         
-        // ZMIANA: Ta funkcja dba teraz również o odznaczenie przycisku "x"
         function removeActiveForms() {
             document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f));
-            const activeBtn = document.getElementById('self-action-toggle-btn');
-            if (activeBtn) {
-                activeBtn.classList.remove('active-danger');
-            }
+            document.querySelectorAll('.action-button.active-danger').forEach(btn => btn.classList.remove('active-danger'));
         }
         
-        // ZMIANA: Ta funkcja już nie musi sama zamykać formularzy
         function showSelfActionMenu(slot, isPermanentAccount) {
-            const menu = document.createElement('div');
-            menu.className = 'action-menu';
+            const menu = document.createElement('div'); menu.className = 'action-menu';
             let menuHTML = '';
             if (isPermanentAccount) { menuHTML += `<button class="logout-btn">Wyloguj</button>`; }
             menuHTML += `<button class="delete-btn">Usuń konto</button>`;
-            menu.innerHTML = menuHTML;
-            slot.appendChild(menu);
+            menu.innerHTML = menuHTML; slot.appendChild(menu);
             const logoutBtn = menu.querySelector('.logout-btn');
             if(logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; }
-            menu.querySelector('.delete-btn').onclick = () => { if (confirm("Czy na pewno chcesz usunąć swoje konto? Ta akcja jest nieodwracalna.")) { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); storedUsername = null; resetSession(); removeActiveForms(); }};
+            menu.querySelector('.delete-btn').onclick = () => { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); storedUsername = null; resetSession(); removeActiveForms(); };
+        }
+
+        // ZMIANA: Nowa funkcja do wyświetlania menu moderatora
+        function showModeratorActionMenu(slot, targetUsername) {
+            const menu = document.createElement('div'); menu.className = 'action-menu';
+            menu.innerHTML = `<button class="logout-btn">Wyloguj</button><button class="delete-btn">Usuń</button>`;
+            slot.appendChild(menu);
+            
+            menu.querySelector('.logout-btn').onclick = () => {
+                socket.send(JSON.stringify({ type: 'kick_user', payload: { username: targetUsername } }));
+                removeActiveForms();
+            };
+            menu.querySelector('.delete-btn').onclick = () => {
+                socket.send(JSON.stringify({ type: 'remove_user', payload: { username: targetUsername } }));
+                removeActiveForms();
+            };
         }
         
         function showLoginForm(slot, targetUsername, isNewUser = false) {
             removeActiveForms();
-            const form = document.createElement('form');
-            form.className = 'form-inline';
+            const form = document.createElement('form'); form.className = 'form-inline';
             const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło";
             form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : '';
             form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
