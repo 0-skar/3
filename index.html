@@ -23,7 +23,20 @@
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--secondary-bg-color); }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
         .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
-        .chat-tabs { height: auto; box-sizing: border-box; border-bottom: 1px solid var(--border-color); padding: 5px; flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; }
+        
+        /* ZMIANA: Wyrównanie wysokości nagłówków */
+        .chat-tabs {
+            height: var(--header-height); /* Ustawia tę samą wysokość co główny nagłówek */
+            box-sizing: border-box;
+            border-bottom: 1px solid var(--border-color);
+            padding: 5px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Centruje zawartość w pionie */
+        }
+        /* KONIEC ZMIANY */
+
         .private-chat-tabs { flex-wrap: wrap; gap: 5px; height: auto; padding: 5px 10px; flex-shrink: 0; display: none; align-items: center; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
         
@@ -80,13 +93,12 @@
         #input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); background-color: #40444b; color: var(--text-color); border-radius: 8px; font-size: 1rem; }
         #form button[type="submit"] { padding: 12px 18px; margin-left: 10px; border: none; background-color: var(--accent-color); color: var(--text-color); border-radius: 8px; cursor: pointer; font-weight: bold; }
         
-        /* ZMIANA: Zaktualizowano margines dla mikrofonu */
         #mic-to-text-btn {
             background: none;
             border: none;
             color: var(--text-muted-color);
             padding: 8px;
-            margin-right: 10px; /* Zamiast margin-left */
+            margin-right: 10px;
             font-size: 1.5rem;
             cursor: pointer;
             border-radius: 50%;
@@ -96,9 +108,8 @@
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s;
-            flex-shrink: 0; /* Zapobiega kurczeniu się przycisku */
+            flex-shrink: 0;
         }
-        /* KONIEC ZMIANY */
 
         #mic-to-text-btn:hover:not(:disabled) { background-color: var(--hover-color); }
         #mic-to-text-btn.listening { color: var(--danger-color); animation: pulse 1.5s infinite; }
@@ -151,13 +162,11 @@
                 </div>
             </div>
         </div>
-        <!-- ZMIANA: Zmieniono kolejność elementów w formularzu -->
         <form id="form" action="">
             <button type="button" id="mic-to-text-btn" title="Nagraj wiadomość głosową" disabled>🎤</button>
             <input id="input" autocomplete="off" placeholder="Zaloguj się, aby rozmawiać..." disabled />
             <button type="submit" disabled>Wyślij</button>
         </form>
-        <!-- KONIEC ZMIANY -->
     </div>
     
     <script>
