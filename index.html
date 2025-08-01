@@ -24,18 +24,16 @@
         .app-layout { display: flex; flex-direction: column; height: 100%; }
         .chat-header { height: var(--header-height); box-sizing: border-box; padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         
-        /* ZMIANA: Wyrównanie wysokości nagłówków */
         .chat-tabs {
-            height: var(--header-height); /* Ustawia tę samą wysokość co główny nagłówek */
+            height: var(--header-height);
             box-sizing: border-box;
             border-bottom: 1px solid var(--border-color);
             padding: 5px;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Centruje zawartość w pionie */
+            justify-content: center;
         }
-        /* KONIEC ZMIANY */
 
         .private-chat-tabs { flex-wrap: wrap; gap: 5px; height: auto; padding: 5px 10px; flex-shrink: 0; display: none; align-items: center; background-color: var(--secondary-bg-color); border-bottom: 1px solid var(--border-color); }
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
@@ -306,7 +304,30 @@
 
         function switchChat(id) { activeChat = id; if (id === 'public') { ui.privateChatTabs.style.display = 'none'; } else { ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = id === 'public' ? document.getElementById('tab-public') : document.getElementById(`tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } updateAllVoiceConnections(); }
 
-        function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); if (data.username === "System") { i.className = 'system-message'; i.textContent = data.message; } else { i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `<span class="username-color">${data.username}</span>: ${data.message}`; } mDiv.appendChild(i); mDiv.scrollTop = mDiv.scrollHeight; }
+        function addMessage(data, targetChatId) { 
+            const isPrivate = targetChatId !== 'public';
+            const mDiv = document.getElementById(`messages-${targetChatId}`);
+            if (!mDiv) return;
+
+            const i = document.createElement('li');
+            
+            // ZMIANA: Poprawka formatowania nazwy użytkownika dla wiadomości prywatnych
+            if (data.username === "System") {
+                i.className = 'system-message';
+                i.textContent = data.message;
+            } else {
+                let senderName = data.username;
+                if (isPrivate) {
+                    // W wiadomości prywatnej, "username" to zawsze nadawca
+                    senderName = data.sender;
+                }
+                i.className = isPrivate ? 'private-message' : 'user-message';
+                i.innerHTML = `<span class="username-color">${senderName}</span>: ${data.message}`;
+            }
+
+            mDiv.appendChild(i);
+            mDiv.scrollTop = mDiv.scrollHeight;
+        }
         
         function renderUsers(users) {
             allUsers = users; const currentUser = users.find(u => u.username === sessionUsername); const isActive = currentUser && currentUser.status === 'active'; isModerator = isActive && currentUser.role === 'moderator';
@@ -368,15 +389,34 @@
                 const data = JSON.parse(event.data);
                 switch(data.type) {
                     case 'user_update': renderUsers(data.payload.users); break;
-                    case 'chat_message': if (data.payload.username !== sessionUsername) addMessage(data.payload, 'public'); break;
+                    case 'chat_message': addMessage(data.payload, 'public'); break;
                     case 'private_message':
+                        const chatPartner = data.payload.sender === sessionUsername ? data.payload.recipient : data.payload.sender;
+                        addMessage(data.payload, chatPartner);
                         if (data.payload.sender !== sessionUsername) {
-                            const chatPartner = data.payload.sender; createChatWindow(chatPartner, `Priv: ${chatPartner}`); addMessage({ username: chatPartner, message: data.payload.message }, chatPartner);
-                            lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block';
-                            if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
+                            if (activeChat !== chatPartner) { 
+                                ui.privateChatIndicator.classList.add('has-unread');
+                                const tab = document.getElementById(`tab-private-${chatPartner}`); 
+                                if(tab) tab.classList.add('has-unread');
+                            }
+                            lastPrivateChatPartner = chatPartner;
+                            ui.privateChatIndicator.textContent = chatPartner;
+                            ui.privateChatIndicator.style.display = 'inline-block';
                         }
                         break;
                     case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public'); break;
+                    
+                    // ZMIANA: Nowa obsługa historii prywatnej
+                    case 'private_history':
+                        const partner = data.payload.partner;
+                        const history = data.payload.history;
+                        const messagesDiv = document.getElementById(`messages-${partner}`);
+                        if (messagesDiv) {
+                            messagesDiv.innerHTML = ''; // Wyczyść okno przed załadowaniem historii
+                            history.forEach(msg => addMessage(msg, partner));
+                        }
+                        break;
+
                     case 'join_success':
                         sessionUsername = data.payload.username; if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); } removeActiveForms();
                         break;
@@ -389,7 +429,20 @@
         }
         
         function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
-        function openPrivateChat(targetUser) { createChatWindow(targetUser, `Priv: ${targetUser}`); switchChat(targetUser); }
+        
+        // ZMIANA: Funkcja otwierania czatu teraz prosi o historię
+        function openPrivateChat(targetUser) {
+            createChatWindow(targetUser, `Priv: ${targetUser}`);
+            // Wyślij prośbę o historię, jeśli nie jest to czat z samym sobą
+            if (socket && socket.readyState === WebSocket.OPEN && targetUser !== sessionUsername) {
+                socket.send(JSON.stringify({
+                    type: "get_private_history",
+                    payload: { partner: targetUser }
+                }));
+            }
+            switchChat(targetUser);
+        }
+
         async function loadHistory() { try { const r = await fetch(historyUrl); const h = await r.json(); h.forEach(m => addMessage(m, 'public')); } catch (e) { console.error(e); } }
         function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); }
         function showSelfActionMenu(slot, isPermanentAccount) { removeActiveForms(); const menu = document.createElement('div'); menu.className = 'action-menu'; let menuHTML = ''; if (isPermanentAccount) { menuHTML += `<button class="logout-btn">Wyloguj</button>`; } menuHTML += `<button class="delete-btn">Usuń konto</button>`; menu.innerHTML = menuHTML; slot.appendChild(menu); const logoutBtn = menu.querySelector('.logout-btn'); if(logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); resetSession(); }; } menu.querySelector('.delete-btn').onclick = () => { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); localStorage.removeItem('forumUsername'); storedUsername = null; removeActiveForms(); }; }
@@ -403,7 +456,13 @@
             const type = activeChat === 'public' ? 'chat_message' : 'private_message';
             const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message };
             socket.send(JSON.stringify({ type, payload }));
-            addMessage({ username: sessionUsername, message: message }, activeChat);
+            
+            // Dodaj wiadomość do UI natychmiast
+            const messageData = activeChat === 'public' 
+                ? { username: sessionUsername, message: message }
+                : { sender: sessionUsername, recipient: activeChat, message: message };
+            addMessage(messageData, activeChat);
+            
             ui.input.value = '';
         });
 
