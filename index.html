@@ -60,7 +60,7 @@
         .tab-button .close-tab-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; padding-left: 8px; line-height: 1; }
         .close-tab-btn:hover { color: var(--text-color); }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
-        .relationship-icon { cursor: pointer; margin-right: 8px; font-size: 0.9em; transition: color 0.2s; color: var(--private-msg-color); /* ZMIANA: Domyślny kolor na żółty */ }
+        .relationship-icon { cursor: pointer; margin-right: 8px; font-size: 0.9em; transition: color 0.2s; color: var(--private-msg-color); /* Domyślny kolor żółty */ }
         .relationship-icon.favorite { color: var(--notification-color); /* Zielony */ }
         .relationship-icon.blocked { color: var(--danger-color); /* Czerwony */ }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
@@ -178,7 +178,7 @@
             }
         }
 
-        // ZMIANA: Zmodyfikowana funkcja updateRelationshipIcon
+        // KLUCZOWA ZMIANA: Poprawiona funkcja updateRelationshipIcon
         function updateRelationshipIcon(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
@@ -186,16 +186,20 @@
 
             const status = currentUserData.relationships[partner] || 'neutral';
             
+            // Zresetuj klasy
             icon.classList.remove('favorite', 'blocked');
-            icon.innerHTML = '👍'; // Zawsze ta sama ikona
 
             if (status === 'favorite') {
-                icon.classList.add('favorite');
+                icon.innerHTML = '👍'; // Kciuk w górę
+                icon.classList.add('favorite'); // Dodaj klasę dla zielonego koloru
                 icon.title = 'Użytkownik specjalny (otrzymujesz powiadomienia)';
             } else if (status === 'blocked') {
-                icon.classList.add('blocked');
+                icon.innerHTML = '👎'; // Kciuk w dół
+                icon.classList.add('blocked'); // Dodaj klasę dla czerwonego koloru
                 icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
             } else { // Neutral
+                icon.innerHTML = '👍'; // Kciuk w górę
+                // Nie dodajemy klasy, więc użyje domyślnego (żółtego) koloru
                 icon.title = 'Użytkownik neutralny';
             }
         }
