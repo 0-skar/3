@@ -53,10 +53,9 @@
         .close-tab-btn:hover { color: var(--text-color); }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         
-        /* ZMIANA: Style dla ikon SVG */
         .relationship-icon { cursor: pointer; margin-right: 8px; line-height: 0; }
         .relationship-icon svg { width: 16px; height: 16px; vertical-align: middle; }
-        .relationship-icon .icon-path { stroke-width: 1.5; stroke: var(--text-muted-color); fill: none; }
+        .relationship-icon .icon-path { stroke-width: 1.5; stroke: var(--text-muted-color); fill: none; transition: all 0.2s; }
         .relationship-icon.favorite .icon-path { fill: var(--notification-color); stroke: var(--notification-color); }
         .relationship-icon.blocked .icon-path { fill: var(--danger-color); stroke: var(--danger-color); }
 
@@ -67,6 +66,10 @@
         .user-slot .user-name { font-weight: bold; flex-grow: 1; font-size: clamp(0.85rem, 2.5vw, 1rem); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .action-button { background: none; border: none; color: var(--text-muted-color); font-size: 1.2rem; cursor: pointer; margin-left: 5px; padding: 0 5px; transition: color 0.2s; }
         .action-button.active-danger { color: var(--danger-color); }
+        .form-inline { margin-top: 10px; display: flex; flex-direction: column; }
+        .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
+        .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
+        .action-menu button.delete-btn { background-color: var(--danger-color); }
     </style>
 </head>
 <body>
@@ -100,9 +103,10 @@
         let storedUsername = localStorage.getItem('forumUsername');
         let lastPrivateChatPartner = null;
 
-        // ZMIANA: Zdefiniowanie ikon SVG jako stałych
-        const thumbUpSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hand-thumbs-up" viewBox="0 0 16 16"><path class="icon-path" d="M8.864.046C7.908-.193 7.02.53 6.956 1.466c-.072 1.051-.23 2.016-.428 2.59-.125.36-.479 1.013-1.04 1.639-.557.623-1.282 1.178-2.131 1.41C2.685 7.288 2 7.87 2 8.72v4.001c0 .845.682 1.464 1.448 1.545 1.07.114 1.564.415 2.068.723l.048.03c.272.165.578.348.97.484.397.138.89.222 1.465.222h2.742c1.156 0 2.165-.88 2.37-2.042.205-1.163.417-2.28.28-3.145a2.4 2.4 0 0 0-.97-1.423.46.46 0 0 1-.224-.37L13.04.046z"/></svg>`;
-        const thumbDownSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hand-thumbs-down" viewBox="0 0 16 16"><path class="icon-path" d="M8.864 15.956c.956.238 1.843-.53 1.91-1.466.072-1.051.23-2.016.428-2.59.125-.36.479-1.013 1.04-1.639.557-.623 1.282-1.178 2.131-1.41C13.315 8.712 14 8.13 14 7.28V3.279c0-.845-.682-1.464-1.448-1.545-1.07-.114-1.564-.415-2.068-.723l-.048-.03c-.272-.165-.578-.348-.97-.484-.397-.138-.89-.222-1.465-.222H2.742c-1.156 0-2.165.88-2.37 2.042C.167 3.785-.045 4.9.088 5.756a2.4 2.4 0 0 0 .97 1.423.46.46 0 0 1 .224.37l-1.04 4.084z"/></svg>`;
+        const thumbUpSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path class="icon-path" d="M8.864.046C7.908-.193 7.02.53 6.956 1.466c-.072 1.051-.23 2.016-.428 2.59-.125.36-.479 1.013-1.04 1.639-.557.623-1.282 1.178-2.131 1.41C2.685 7.288 2 7.87 2 8.72v4.001c0 .845.682 1.464 1.448 1.545 1.07.114 1.564.415 2.068.723l.048.03c.272.165.578.348.97.484.397.138.89.222 1.465.222h2.742c1.156 0 2.165-.88 2.37-2.042.205-1.163.417-2.28.28-3.145a2.4 2.4 0 0 0-.97-1.423.46.46 0 0 1-.224-.37L13.04.046z"/></svg>`;
+        const thumbDownSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path class="icon-path" d="M8.864 15.956c.956.238 1.843-.53 1.91-1.466.072-1.051.23-2.016.428-2.59.125-.36.479-1.013 1.04-1.639.557-.623-1.282-1.178-2.131-1.41C13.315 8.712 14 8.13 14 7.28V3.279c0-.845-.682-1.464-1.448-1.545-1.07-.114-1.564-.415-2.068-.723l-.048-.03c-.272-.165-.578-.348-.97-.484-.397-.138-.89-.222-1.465-.222H2.742c-1.156 0-2.165.88-2.37 2.042C.167 3.785-.045 4.9.088 5.756a2.4 2.4 0 0 0 .97 1.423.46.46 0 0 1 .224.37l-1.04 4.084z"/></svg>`;
+
+        const hfSpaceUrl = "eosforus-chat.hf.space", wsUrl = `wss://${hfSpaceUrl}/ws/`, historyUrl = `https://${hfSpaceUrl}/history`;
 
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
@@ -160,7 +164,7 @@
                 icon.innerHTML = thumbDownSVG;
                 icon.classList.add('blocked');
                 icon.title = 'Zablokowany: Nie otrzymujesz wiadomości. Kliknij, aby przywrócić status neutralny.';
-            } else {
+            } else { // neutral
                 icon.innerHTML = thumbUpSVG;
                 icon.title = 'Neutralny: Standardowa komunikacja. Kliknij, aby dodać do ulubionych.';
             }
