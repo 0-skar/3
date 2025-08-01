@@ -60,9 +60,9 @@
         .tab-button .close-tab-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; padding-left: 8px; line-height: 1; }
         .close-tab-btn:hover { color: var(--text-color); }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
-        .relationship-icon { cursor: pointer; margin-right: 8px; font-size: 0.9em; transition: color 0.2s; color: var(--text-muted-color); }
-        .relationship-icon.favorite { color: var(--notification-color); }
-        .relationship-icon.blocked { color: var(--danger-color); }
+        .relationship-icon { cursor: pointer; margin-right: 8px; font-size: 0.9em; transition: color 0.2s; color: var(--private-msg-color); /* ZMIANA: Domyślny kolor na żółty */ }
+        .relationship-icon.favorite { color: var(--notification-color); /* Zielony */ }
+        .relationship-icon.blocked { color: var(--danger-color); /* Czerwony */ }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
         .user-slot.inactive { opacity: 0.6; }
         .user-slot.blocked-by-user { background-color: #4d2a2a; border-color: var(--danger-color); }
@@ -178,18 +178,25 @@
             }
         }
 
+        // ZMIANA: Zmodyfikowana funkcja updateRelationshipIcon
         function updateRelationshipIcon(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
             if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return;
+
             const status = currentUserData.relationships[partner] || 'neutral';
+            
             icon.classList.remove('favorite', 'blocked');
+            icon.innerHTML = '👍'; // Zawsze ta sama ikona
+
             if (status === 'favorite') {
-                icon.innerHTML = '👍'; icon.classList.add('favorite'); icon.title = 'Ulubiony (będziesz otrzymywać powiadomienia)';
+                icon.classList.add('favorite');
+                icon.title = 'Użytkownik specjalny (otrzymujesz powiadomienia)';
             } else if (status === 'blocked') {
-                icon.innerHTML = '👎'; icon.classList.add('blocked'); icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
-            } else {
-                icon.innerHTML = '👍'; icon.title = 'Neutralny';
+                icon.classList.add('blocked');
+                icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
+            } else { // Neutral
+                icon.title = 'Użytkownik neutralny';
             }
         }
 
