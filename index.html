@@ -167,7 +167,7 @@
 
         function toggleRelationship(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
-            if (!currentUserData || !currentUserData.relationships) return;
+            if (!currentUserData || typeof currentUserData.relationships === 'undefined') return;
             const currentStatus = currentUserData.relationships[partner] || 'neutral';
             let nextStatus = 'neutral';
             if (currentStatus === 'neutral') nextStatus = 'favorite';
@@ -182,14 +182,21 @@
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
             if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return;
+            
             const status = currentUserData.relationships[partner] || 'neutral';
             icon.classList.remove('favorite', 'blocked');
+
             if (status === 'favorite') {
-                icon.innerHTML = '👍'; icon.classList.add('favorite'); icon.title = 'Ulubiony (będziesz otrzymywać powiadomienia)';
+                icon.innerHTML = '👍';
+                icon.classList.add('favorite');
+                icon.title = 'Ulubiony: Będziesz otrzymywać powiadomienia od tego użytkownika. Kliknij, aby zablokować.';
             } else if (status === 'blocked') {
-                icon.innerHTML = '👎'; icon.classList.add('blocked'); icon.title = 'Zablokowany (nie otrzymujesz wiadomości)';
-            } else {
-                icon.innerHTML = '👍'; icon.title = 'Neutralny';
+                icon.innerHTML = '👎';
+                icon.classList.add('blocked');
+                icon.title = 'Zablokowany: Nie otrzymujesz wiadomości. Kliknij, aby przywrócić status neutralny.';
+            } else { // neutral
+                icon.innerHTML = '👍';
+                icon.title = 'Neutralny: Standardowa komunikacja. Kliknij, aby dodać do ulubionych.';
             }
         }
 
@@ -235,11 +242,9 @@
             const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships})));
             allUsers = users;
             const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships})));
-            
             if (oldUsersJSON !== newUsersJSON) {
                 document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner));
             }
-            
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const isActive = currentUserData && currentUserData.status === 'active';
             isModerator = isActive && currentUserData.role === 'moderator';
@@ -249,7 +254,6 @@
             ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; }
             if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
-            
             ui.userSlotsContainer.innerHTML = '';
             const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 };
             users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username))
@@ -338,10 +342,7 @@
             };
             socket.onclose = (e) => {
                 console.log(`Rozłączono z kodem ${e.code}. Próbuję połączyć ponownie...`);
-                if (e.code === 4001) { // Kod dla usuniętego konta
-                    localStorage.removeItem('forumUsername');
-                    storedUsername = null;
-                }
+                if (e.code === 4001) { localStorage.removeItem('forumUsername'); storedUsername = null; }
                 resetSession();
                 setTimeout(connectWebSocket, 3000);
             };
