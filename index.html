@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Forum z Głosem</title>
+    <!-- ZMIANA 1: Dodano adapter WebRTC dla lepszej kompatybilności z przeglądarkami -->
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
             --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
@@ -153,7 +155,39 @@
         function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = event => { let audio = document.getElementById(`audio-${targetUser}`); if (!audio) { audio = document.createElement('audio'); audio.id = `audio-${targetUser}`; audio.autoplay = true; audio.playsInline = true; audioContainer.appendChild(audio); } audio.srcObject = event.streams[0]; }; pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser); if (localStream) { localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); } peerConnections[targetUser] = pc; return pc; }
         function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); }
         async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
-        async function toggleVoice() { if (isRecording) recognition.stop(); if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (err) { console.error("Błąd dostępu do mikrofonu dla WebRTC:", err); alert("Nie udało się uzyskać dostępu do mikrofonu. Sprawdź uprawnienia."); return; } } isVoiceActive = !isVoiceActive; ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive); const voiceBtn = document.getElementById('self-voice-toggle-btn'); if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos (jesteś słyszalny)' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); } updateAllVoiceConnections(); }
+        
+        // ZMIANA 2: Zaktualizowana funkcja toggleVoice z zaawansowanymi opcjami audio
+        async function toggleVoice() {
+            if (isRecording) recognition.stop();
+            if (!localStream) {
+                try {
+                    // Używamy zaawansowanych opcji, aby poprawić jakość dźwięku
+                    const audioConstraints = {
+                        audio: {
+                            echoCancellation: true,    // Włącz redukcję echa
+                            noiseSuppression: true,    // Włącz redukcję szumów
+                            autoGainControl: true,     // Włącz automatyczne wzmocnienie
+                            channelCount: 1            // Użyj mono, co jest lepsze dla głosu
+                        }
+                    };
+                    localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+                } catch (err) {
+                    console.error("Błąd dostępu do mikrofonu dla WebRTC:", err);
+                    alert("Nie udało się uzyskać dostępu do mikrofonu. Sprawdź uprawnienia i czy Twoja przeglądarka wspiera zaawansowane opcje audio.");
+                    return;
+                }
+            }
+            isVoiceActive = !isVoiceActive;
+            ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
+            localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
+            const voiceBtn = document.getElementById('self-voice-toggle-btn');
+            if (voiceBtn) {
+                voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈';
+                voiceBtn.title = isVoiceActive ? 'Wyłącz głos (jesteś słyszalny)' : 'Włącz głos';
+                voiceBtn.classList.toggle('active', isVoiceActive);
+            }
+            updateAllVoiceConnections();
+        }
 
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
