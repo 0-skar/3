@@ -81,12 +81,12 @@
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
         
-        /* // ZMIANA: Style dla dzwonka */
+        /* // ZMIANA: Poprawione style dla dzwonka */
         #enable-notifications-btn {
             background: none; border: none; font-size: 1.5rem;
             cursor: pointer; margin-left: auto; padding: 0 5px;
-            transition: color 0.2s, filter 0.2s;
-            /* Domyślny, szary stan */
+            transition: color 0.2s;
+            /* Domyślny, szary/nieaktywny stan */
             color: var(--text-muted-color);
         }
         #enable-notifications-btn.active {
@@ -210,7 +210,7 @@
         let recognition, isRecording = false;
 
         const THUMB_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path></svg>`;
-        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
+        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14-.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
         
         function setAllIncomingAudio(enabled) { audioContainer.querySelectorAll('audio').forEach(audio => { audio.muted = !enabled; }); }
 
@@ -280,7 +280,6 @@
                 tabButton.appendChild(tabText);
                 tabButton.appendChild(closeBtn);
                 
-                // // ZMIANA: Wstawia nową zakładkę przed dzwonkiem, jeśli dzwonek istnieje.
                 const notifBtn = document.getElementById('enable-notifications-btn');
                 ui.privateChatTabs.insertBefore(tabButton, notifBtn);
                 
@@ -313,7 +312,7 @@
                 btn = document.createElement('button');
                 btn.id = 'enable-notifications-btn';
                 btn.innerHTML = '🔔';
-                ui.privateChatTabs.appendChild(btn); // Dodajemy na końcu, flexbox z margin-left: auto załatwi resztę
+                ui.privateChatTabs.appendChild(btn);
 
                 btn.onclick = async (e) => {
                     e.stopPropagation();
@@ -329,6 +328,7 @@
             updateNotificationButtonState();
         }
 
+        // // ZMIANA: Poprawiona logika aktualizacji stanu dzwonka
         async function updateNotificationButtonState() {
             const btn = document.getElementById('enable-notifications-btn');
             if (!btn) return;
@@ -337,10 +337,10 @@
             const subscription = await registration.pushManager.getSubscription();
 
             if (subscription) {
-                btn.classList.add('active'); // Złoty dzwonek
+                btn.classList.add('active'); // Nadaj złoty kolor
                 btn.title = 'Powiadomienia są WŁĄCZONE. Kliknij, aby wyłączyć.';
             } else {
-                btn.classList.remove('active'); // Szary dzwonek
+                btn.classList.remove('active'); // Usuń złoty kolor (będzie szary)
                 btn.title = 'Powiadomienia są WYŁĄCZONE. Kliknij, aby włączyć.';
             }
         }
