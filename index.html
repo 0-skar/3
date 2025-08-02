@@ -81,19 +81,19 @@
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
         
+        /* // ZMIANA: Style dla dzwonka */
         #enable-notifications-btn {
             background: none; border: none; font-size: 1.5rem;
             cursor: pointer; margin-left: auto; padding: 0 5px;
             transition: color 0.2s, filter 0.2s;
-            color: var(--private-msg-color); /* // ZMIANA: Domyślny kolor (włączony) */
-        }
-        /* // DODANO: Styl dla wyłączonego dzwonka */
-        #enable-notifications-btn.disabled {
+            /* Domyślny, szary stan */
             color: var(--text-muted-color);
-            filter: grayscale(100%);
+        }
+        #enable-notifications-btn.active {
+             /* Aktywny, złoty stan */
+            color: var(--private-msg-color);
         }
         #enable-notifications-btn:hover {
-            filter: none;
             color: var(--accent-color);
         }
     </style>
@@ -160,17 +160,16 @@
                 });
                 console.log('Nowa subskrypcja uzyskana:', subscription);
                 sendSubscriptionToBackend(subscription);
-                updateNotificationButtonState(); // Zaktualizuj wygląd dzwonka
+                updateNotificationButtonState();
             } catch (error) {
                 console.error('Błąd podczas subskrypcji powiadomień:', error);
                 if (Notification.permission === 'denied') {
                     alert('Zablokowałeś(aś) powiadomienia. Aby je włączyć, musisz zmienić ustawienia w swojej przeglądarce.');
                 }
-                updateNotificationButtonState(); // Zaktualizuj wygląd dzwonka nawet po błędzie
+                updateNotificationButtonState();
             }
         }
 
-        // // DODANO: Funkcja do wyrejestrowania powiadomień
         async function unsubscribeUserFromPush() {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
             try {
@@ -246,7 +245,48 @@
             if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); }
         }
 
-        function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.onclick = () => switchChat(id); if (id === 'public') { tabButton.id = 'tab-public'; tabButton.innerHTML = `<span class="tab-text">${name}</span>`; ui.publicChatTabs.appendChild(tabButton); } else { tabButton.id = `tab-private-${id}`; const relationshipIcon = document.createElement('span'); relationshipIcon.className = 'relationship-icon'; relationshipIcon.dataset.partner = id; relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); }; const tabText = document.createElement('span'); tabText.className = 'tab-text'; tabText.textContent = name; const closeBtn = document.createElement('span'); closeBtn.className = 'close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); }; tabButton.appendChild(relationshipIcon); tabButton.appendChild(tabText); tabButton.appendChild(closeBtn); ui.privateChatTabs.appendChild(tabButton); updateRelationshipIcon(id); } }
+        function createChatWindow(id, name) {
+            if (document.getElementById(`messages-${id}`)) return;
+            const messagesDiv = document.createElement('ul');
+            messagesDiv.className = 'messages';
+            messagesDiv.id = `messages-${id}`;
+            ui.chatWindows.appendChild(messagesDiv);
+
+            const tabButton = document.createElement('button');
+            tabButton.className = 'tab-button';
+            tabButton.onclick = () => switchChat(id);
+
+            if (id === 'public') {
+                tabButton.id = 'tab-public';
+                tabButton.innerHTML = `<span class="tab-text">${name}</span>`;
+                ui.publicChatTabs.appendChild(tabButton);
+            } else {
+                tabButton.id = `tab-private-${id}`;
+                const relationshipIcon = document.createElement('span');
+                relationshipIcon.className = 'relationship-icon';
+                relationshipIcon.dataset.partner = id;
+                relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); };
+
+                const tabText = document.createElement('span');
+                tabText.className = 'tab-text';
+                tabText.textContent = name;
+                
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'close-tab-btn';
+                closeBtn.innerHTML = '×';
+                closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); };
+
+                tabButton.appendChild(relationshipIcon);
+                tabButton.appendChild(tabText);
+                tabButton.appendChild(closeBtn);
+                
+                // // ZMIANA: Wstawia nową zakładkę przed dzwonkiem, jeśli dzwonek istnieje.
+                const notifBtn = document.getElementById('enable-notifications-btn');
+                ui.privateChatTabs.insertBefore(tabButton, notifBtn);
+                
+                updateRelationshipIcon(id);
+            }
+        }
         
         function toggleRelationship(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
@@ -263,10 +303,9 @@
             }
         }
         
-        // // ZMIANA: Przycisk jest teraz przełącznikiem (włącz/wyłącz)
         function createOrUpdateNotificationButton() {
             if (!('Notification' in window) || Notification.permission === 'denied') {
-                return; // Nie pokazuj przycisku, jeśli powiadomienia są zablokowane lub niewspierane
+                return;
             }
             
             let btn = document.getElementById('enable-notifications-btn');
@@ -274,7 +313,7 @@
                 btn = document.createElement('button');
                 btn.id = 'enable-notifications-btn';
                 btn.innerHTML = '🔔';
-                ui.privateChatTabs.appendChild(btn);
+                ui.privateChatTabs.appendChild(btn); // Dodajemy na końcu, flexbox z margin-left: auto załatwi resztę
 
                 btn.onclick = async (e) => {
                     e.stopPropagation();
@@ -298,10 +337,10 @@
             const subscription = await registration.pushManager.getSubscription();
 
             if (subscription) {
-                btn.classList.remove('disabled');
+                btn.classList.add('active'); // Złoty dzwonek
                 btn.title = 'Powiadomienia są WŁĄCZONE. Kliknij, aby wyłączyć.';
             } else {
-                btn.classList.add('disabled');
+                btn.classList.remove('active'); // Szary dzwonek
                 btn.title = 'Powiadomienia są WYŁĄCZONE. Kliknij, aby włączyć.';
             }
         }
@@ -312,7 +351,7 @@
         function renderUsers(users) { const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { 
             nameElement.onclick = () => {
                 ui.privateChatTabs.style.display = 'flex'; 
-                createOrUpdateNotificationButton(); // // ZMIANA: Stwórz/zaktualizuj przycisk
+                createOrUpdateNotificationButton();
                 if (lastPrivateChatPartner) {
                     switchChat(lastPrivateChatPartner);
                 } else {
