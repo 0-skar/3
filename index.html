@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Forum z Głosem</title>
-    <!-- ZMIANA 1: Dodano adapter WebRTC dla lepszej kompatybilności z przeglądarkami -->
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
             --background-color: #2c2f33; --secondary-bg-color: #23272a; --header-bg-color: #1e2124;
             --text-color: #ffffff; --text-muted-color: #99aab5; --accent-color: #7289da;
             --private-msg-color: #f0b90c; --border-color: #444; --hover-color: #3a3e42;
-            --notification-color: #198754; /* ZMIANA: Ciemny, widoczny zielony */
-            --danger-color: #dc3545; --voice-active-color: #43b581;
+            --notification-color: #198754; --danger-color: #dc3545; --voice-active-color: #43b581;
             --sidebar-width: clamp(200px, 30vw, 240px); --transition-speed: 0.3s;
             --header-height: 52px;
         }
@@ -63,27 +61,10 @@
         .tab-button .close-tab-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; padding-left: 8px; line-height: 1; }
         .close-tab-btn:hover { color: var(--text-color); }
         .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
-        
-        .relationship-icon {
-            cursor: pointer;
-            margin-right: 8px;
-            transition: color 0.2s;
-            color: var(--private-msg-color); /* Domyślny kolor żółty */
-            display: inline-flex;
-            align-items: center;
-            vertical-align: middle;
-        }
-        .relationship-icon svg {
-            width: 1.1em;
-            height: 1.1em;
-        }
-        .relationship-icon.favorite {
-            color: var(--notification-color); /* Zielony */
-        }
-        .relationship-icon.blocked {
-            color: var(--danger-color); /* Czerwony */
-        }
-
+        .relationship-icon { cursor: pointer; margin-right: 8px; transition: color 0.2s; color: var(--private-msg-color); display: inline-flex; align-items: center; vertical-align: middle; }
+        .relationship-icon svg { width: 1.1em; height: 1.1em; }
+        .relationship-icon.favorite { color: var(--notification-color); }
+        .relationship-icon.blocked { color: var(--danger-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
         .user-slot.inactive { opacity: 0.6; }
         .user-slot.blocked-by-user { background-color: #4d2a2a; border-color: var(--danger-color); }
@@ -147,38 +128,74 @@
             recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; if (ui.input.value.trim()) { ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); } };
             recognition.onresult = (event) => { let final_transcript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { final_transcript += event.results[i][0].transcript; } ui.input.value = final_transcript; };
             recognition.onerror = (event) => { console.error("Błąd rozpoznawania mowy:", event.error, event.message); isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; };
-            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { recognition.start(); } });
+            ui.micToTextBtn.addEventListener('click', () => { if (isVoiceActive) return; if (isRecording) { recognition.stop(); } else { recognition.start(); } });
         } else { console.log("Web Speech API nie jest wspierane w tej przeglądarce."); ui.micToTextBtn.style.display = 'none'; }
         
-        async function updateAllVoiceConnections() { if (!isVoiceActive || !localStream || !sessionUsername) { Object.keys(peerConnections).forEach(cleanupVoiceChat); return; } const currentActiveUsers = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username); let targets = (activeChat === 'public') ? currentActiveUsers : (currentActiveUsers.includes(activeChat) ? [activeChat] : []); Object.keys(peerConnections).forEach(peer => !targets.includes(peer) && cleanupVoiceChat(peer)); for (const target of targets) { if (!peerConnections[target]) { const pc = createPeerConnection(target); try { const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal(target, { type: 'offer', sdp: offer.sdp }); } catch (e) { console.error(`Błąd tworzenia oferty dla ${target}:`, e); } } } }
+        // ZMIANA: Ulepszona logika zarządzania połączeniami głosowymi
+        async function updateAllVoiceConnections() {
+            // Jeśli głos jest wyłączony, nie jesteśmy zalogowani lub nie mamy strumienia - zamykamy wszystkie połączenia
+            if (!isVoiceActive || !localStream || !sessionUsername) {
+                Object.keys(peerConnections).forEach(cleanupVoiceChat);
+                return;
+            }
+
+            const currentActiveUsers = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username);
+            
+            // Określamy, z kim chcemy być połączeni
+            let targets = [];
+            if (activeChat === 'public') {
+                targets = currentActiveUsers; // Na publicznym łączymy się ze wszystkimi aktywnymi
+            } else if (currentActiveUsers.includes(activeChat)) {
+                targets = [activeChat]; // Na prywatnym, tylko z partnerem rozmowy, jeśli jest aktywny
+            }
+
+            // Zamykamy połączenia z użytkownikami, którzy nie są już naszym celem
+            Object.keys(peerConnections).forEach(peer => {
+                if (!targets.includes(peer)) {
+                    cleanupVoiceChat(peer);
+                }
+            });
+
+            // Tworzymy nowe połączenia z użytkownikami, którzy są celem, a z którymi nie jesteśmy połączeni
+            for (const target of targets) {
+                if (!peerConnections[target]) {
+                    const pc = createPeerConnection(target);
+                    try {
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        sendSignal(target, { type: 'offer', sdp: offer.sdp });
+                    } catch (e) {
+                        console.error(`Błąd tworzenia oferty dla ${target}:`, e);
+                    }
+                }
+            }
+        }
+
         function sendSignal(recipient, signal) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
         function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = event => { let audio = document.getElementById(`audio-${targetUser}`); if (!audio) { audio = document.createElement('audio'); audio.id = `audio-${targetUser}`; audio.autoplay = true; audio.playsInline = true; audioContainer.appendChild(audio); } audio.srcObject = event.streams[0]; }; pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser); if (localStream) { localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); } peerConnections[targetUser] = pc; return pc; }
         function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); }
         async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
         
-        // ZMIANA 2: Zaktualizowana funkcja toggleVoice z zaawansowanymi opcjami audio
         async function toggleVoice() {
-            if (isRecording) recognition.stop();
+            if (isRecording) { recognition.stop(); }
             if (!localStream) {
                 try {
-                    // Używamy zaawansowanych opcji, aby poprawić jakość dźwięku
-                    const audioConstraints = {
-                        audio: {
-                            echoCancellation: true,    // Włącz redukcję echa
-                            noiseSuppression: true,    // Włącz redukcję szumów
-                            autoGainControl: true,     // Włącz automatyczne wzmocnienie
-                            channelCount: 1            // Użyj mono, co jest lepsze dla głosu
-                        }
-                    };
+                    const audioConstraints = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } };
                     localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-                } catch (err) {
-                    console.error("Błąd dostępu do mikrofonu dla WebRTC:", err);
-                    alert("Nie udało się uzyskać dostępu do mikrofonu. Sprawdź uprawnienia i czy Twoja przeglądarka wspiera zaawansowane opcje audio.");
-                    return;
-                }
+                } catch (err) { console.error("Błąd dostępu do mikrofonu dla WebRTC:", err); alert("Nie udało się uzyskać dostępu do mikrofonu. Sprawdź uprawnienia."); return; }
             }
+            
             isVoiceActive = !isVoiceActive;
-            ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex';
+
+            // ZMIANA: "Odblokowanie" audio na urządzeniach mobilnych
+            if (isVoiceActive) {
+                audioContainer.querySelectorAll('audio').forEach(audio => {
+                    audio.play().catch(e => console.warn("Interakcja użytkownika może być potrzebna do odtworzenia audio."));
+                });
+            }
+
+            // ZMIANA: Ukrywanie przycisku mowy na tekst, gdy głos jest aktywny
+            ui.micToTextBtn.style.display = isVoiceActive ? 'none' : (SpeechRecognition ? 'flex' : 'none');
             localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
             const voiceBtn = document.getElementById('self-voice-toggle-btn');
             if (voiceBtn) {
@@ -238,11 +255,8 @@
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
             if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return;
-
             const status = currentUserData.relationships[partner] || 'neutral';
-            
             icon.classList.remove('favorite', 'blocked');
-
             if (status === 'favorite') {
                 icon.innerHTML = THUMB_UP_SVG;
                 icon.classList.add('favorite');
@@ -273,7 +287,7 @@
             document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
             const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`);
             if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); }
-            updateAllVoiceConnections();
+            updateAllVoiceConnections(); // ZMIANA: Aktualizujemy połączenia głosowe przy każdej zmianie czatu
         }
 
         function addMessage(data, targetChatId) {
@@ -302,6 +316,7 @@
             
             if (oldUsersJSON !== newUsersJSON) {
                 document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner));
+                 updateAllVoiceConnections(); // Aktualizujemy połączenia, jeśli zmieniły się statusy użytkowników
             }
             
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
@@ -309,7 +324,7 @@
             isModerator = isActive && currentUserData.role === 'moderator';
             ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none';
             ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive;
-            if (isActive) { ui.micToTextBtn.style.display = isVoiceActive ? 'none' : 'flex'; } else { ui.micToTextBtn.style.display = 'flex'; }
+            if (isActive) { ui.micToTextBtn.style.display = isVoiceActive ? 'none' : (SpeechRecognition ? 'flex' : 'none'); } else { ui.micToTextBtn.style.display = (SpeechRecognition ? 'flex' : 'none'); }
             ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać...";
             if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; }
             if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); }
@@ -358,10 +373,11 @@
         }
 
         function resetSession() {
+            if (isVoiceActive) toggleVoice(); // Wyłączamy głos
             Object.keys(peerConnections).forEach(cleanupVoiceChat);
             if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-            isVoiceActive = false; sessionUsername = null; isModerator = false;
-            ui.micToTextBtn.disabled = true; ui.micToTextBtn.style.display = 'flex';
+            sessionUsername = null; isModerator = false;
+            ui.micToTextBtn.disabled = true; ui.micToTextBtn.style.display = (SpeechRecognition ? 'flex' : 'none');
             renderUsers(allUsers);
             switchChat('public');
         }
@@ -402,10 +418,7 @@
             };
             socket.onclose = (e) => {
                 console.log(`Rozłączono z kodem ${e.code}. Próbuję połączyć ponownie...`);
-                if (e.code === 4001) { // Kod dla usuniętego konta
-                    localStorage.removeItem('forumUsername');
-                    storedUsername = null;
-                }
+                if (e.code === 4001) { localStorage.removeItem('forumUsername'); storedUsername = null; }
                 resetSession();
                 setTimeout(connectWebSocket, 3000);
             };
