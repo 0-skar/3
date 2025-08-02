@@ -233,12 +233,8 @@
             else if (currentStatus === 'favorite') nextStatus = 'blocked';
             else if (currentStatus === 'blocked') nextStatus = 'neutral';
 
-            // ZMIANA: Pytaj o zgodę na powiadomienia, gdy użytkownik dodaje kogoś do ulubionych
-            if (nextStatus === 'favorite') {
-                console.log("Użytkownik oznaczony jako ulubiony. Inicjowanie subskrypcji powiadomień...");
-                subscribeUserForPush(); 
-            }
-
+            // // ZMIANA: Usunięto stąd logikę subskrypcji. Jest ona teraz w 'join_success'.
+            
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } }));
             }
@@ -293,7 +289,9 @@
                             localStorage.setItem('forumUsername', storedUsername);
                         }
                         removeActiveForms();
-                        // Subskrypcja jest teraz wywoływana po kliknięciu w "łapkę"
+                        // // ZMIANA: Inicjowanie subskrypcji powiadomień zaraz po udanym zalogowaniu.
+                        // Przeglądarka zapyta o zgodę, jeśli jest to potrzebne.
+                        subscribeUserForPush();
                         break;
                     case 'join_failed':
                         alert(`Logowanie nieudane: ${data.payload.reason}`);
