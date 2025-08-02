@@ -80,6 +80,21 @@
         .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
+        
+        /* // DODANO: Styl dla przycisku powiadomień */
+        #enable-notifications-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-left: auto; /* To pcha ikonę na prawą stronę */
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+        #enable-notifications-btn:hover {
+            color: var(--private-msg-color);
+        }
     </style>
 </head>
 <body>
@@ -142,24 +157,29 @@
 
             try {
                 const registration = await navigator.serviceWorker.ready;
+                // // ZMIANA: Sprawdzamy, czy użytkownik już ma subskrypcję, jeśli tak, wysyłamy ją na serwer.
+                // Robimy to dyskretnie, bez pytania użytkownika ponownie.
                 const existingSubscription = await registration.pushManager.getSubscription();
-
                 if (existingSubscription) {
                     console.log('Użytkownik jest już zasubskrybowany.');
                     sendSubscriptionToBackend(existingSubscription);
-                } else {
-                    console.log('Użytkownik nie jest zasubskrybowany. Prośba o subskrypcję...');
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                    });
-                    console.log('Nowa subskrypcja uzyskana:', subscription);
-                    sendSubscriptionToBackend(subscription);
+                    return; // Kończymy, bo wszystko jest już ustawione.
                 }
+
+                // Jeśli nie ma subskrypcji, prosimy o nią. To jest moment, gdy wyskakuje okienko przeglądarki.
+                console.log('Użytkownik nie jest zasubskrybowany. Prośba o subskrypcję...');
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+                console.log('Nowa subskrypcja uzyskana:', subscription);
+                sendSubscriptionToBackend(subscription);
+
             } catch (error) {
                 console.error('Błąd podczas subskrypcji powiadomień:', error);
                 if (Notification.permission === 'denied') {
-                    alert('Zablokowałeś(aś) powiadomienia. Aby je otrzymywać, musisz zmienić ustawienia w swojej przeglądarce.');
+                    // Informujemy użytkownika, że musi ręcznie odblokować powiadomienia.
+                    alert('Zablokowałeś(aś) powiadomienia. Aby je włączyć, musisz zmienić ustawienia w swojej przeglądarce.');
                 }
             }
         }
@@ -186,7 +206,7 @@
         let recognition, isRecording = false;
 
         const THUMB_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path></svg>`;
-        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
+        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41-.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
         
         function setAllIncomingAudio(enabled) { audioContainer.querySelectorAll('audio').forEach(audio => { audio.muted = !enabled; }); }
 
@@ -232,18 +252,58 @@
             if (currentStatus === 'neutral') nextStatus = 'favorite';
             else if (currentStatus === 'favorite') nextStatus = 'blocked';
             else if (currentStatus === 'blocked') nextStatus = 'neutral';
-
-            // // ZMIANA: Usunięto stąd logikę subskrypcji. Jest ona teraz w 'join_success'.
             
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } }));
             }
         }
         
+        // // DODANO: Funkcja tworząca przycisk do włączania powiadomień
+        function createNotificationButton() {
+            if (document.getElementById('enable-notifications-btn')) return; // Nie twórz, jeśli już istnieje
+            
+            const btn = document.createElement('button');
+            btn.id = 'enable-notifications-btn';
+            btn.innerHTML = '🔔';
+            btn.title = 'Włącz powiadomienia o wiadomościach od ulubionych';
+            
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                console.log("Użytkownik kliknął przycisk włączenia powiadomień.");
+                subscribeUserForPush(); // Wywołaj funkcję subskrypcji
+                btn.style.display = 'none'; // Ukryj przycisk po kliknięciu
+            };
+            
+            ui.privateChatTabs.appendChild(btn);
+        }
+
         function updateRelationshipIcon(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`); if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return; const status = currentUserData.relationships[partner] || 'neutral'; icon.classList.remove('favorite', 'blocked'); if (status === 'favorite') { icon.innerHTML = THUMB_UP_SVG; icon.classList.add('favorite'); icon.title = 'Ulubiony (otrzymujesz powiadomienia)'; } else if (status === 'blocked') { icon.innerHTML = THUMB_DOWN_SVG; icon.classList.add('blocked'); icon.title = 'Zablokowany'; } else { icon.innerHTML = THUMB_UP_SVG; icon.title = 'Neutralny'; } }
-        function switchChat(id) { activeChat = id; if (id === 'public') { ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; } else { ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } ui.headerTitle.style.color = 'var(--private-msg-color)'; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } updateAllVoiceConnections(); }
+        function switchChat(id) { activeChat = id; if (id === 'public') { ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; } else { ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } ui.headerTitle.style.color = 'var(--private-msg-color)'; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } const notifBtn = document.getElementById('enable-notifications-btn'); if(notifBtn) notifBtn.style.display='none'; updateAllVoiceConnections(); }
         function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
-        function renderUsers(users) { const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); }
+        function renderUsers(users) { const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.clearHistoryBtn.style.display = isModerator ? 'block' : 'none'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { 
+            // // ZMIANA: Logika kliknięcia na własny slot użytkownika
+            nameElement.onclick = () => {
+                ui.privateChatTabs.style.display = 'flex'; // Pokaż pasek zakładek prywatnych
+                
+                // Sprawdź, czy przeglądarka wspiera powiadomienia i czy użytkownik jeszcze nie podjął decyzji
+                if ('Notification' in window && Notification.permission === 'default') {
+                    createNotificationButton(); // Stwórz i pokaż przycisk dzwonka
+                } else if ('Notification'in window && Notification.permission === 'granted') {
+                    // Jeśli zgoda jest już udzielona, dyskretnie wyślij subskrypcję na serwer
+                    subscribeUserForPush();
+                }
+
+                if (lastPrivateChatPartner) {
+                    switchChat(lastPrivateChatPartner);
+                } else {
+                    // Jeśli nie ma otwartego czatu, po prostu pokazujemy pasek i tytuł
+                    ui.headerTitle.textContent = 'Moje konto: ' + sessionUsername;
+                    document.querySelectorAll('.messages').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+                    activeChat = 'self_view'; // Specjalny stan, aby wiedzieć, że nie jesteśmy w czacie
+                }
+            }; 
+        } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); }
         function resetSession() { if (isVoiceActive) toggleVoice(); Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; renderUsers(allUsers); switchChat('public'); }
         
         function connectWebSocket() {
@@ -289,9 +349,8 @@
                             localStorage.setItem('forumUsername', storedUsername);
                         }
                         removeActiveForms();
-                        // // ZMIANA: Inicjowanie subskrypcji powiadomień zaraz po udanym zalogowaniu.
-                        // Przeglądarka zapyta o zgodę, jeśli jest to potrzebne.
-                        subscribeUserForPush();
+                        // // ZMIANA: Usunięto stąd automatyczne wywoływanie subskrypcji.
+                        // Teraz jest ono obsługiwane przez kliknięcie przycisku przez użytkownika.
                         break;
                     case 'join_failed':
                         alert(`Logowanie nieudane: ${data.payload.reason}`);
