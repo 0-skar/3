@@ -113,15 +113,20 @@
 
         const VAPID_PUBLIC_KEY = "BHOsq849WBsHE-BcYqi8W733f7ARK1Q59r8UgOHn2x-Jy633YomqgyTWyGzJ6EgNBGdo68Pnm9A5qhxEAi2v89o=";
 
+        // --- START ZAKTUALIZOWANEJ FUNKCJI ---
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
+                // ZMIANA: Usunięto '/' z początku ścieżki (było '/service-worker.js').
+                // Teraz przeglądarka będzie szukać pliku w tym samym folderze co index.html,
+                // co jest bardziej niezawodne dla GitHub Pages.
+                navigator.serviceWorker.register('service-worker.js') 
                     .then(registration => console.log('Service Worker zarejestrowany pomyślnie:', registration))
                     .catch(error => console.error('Błąd rejestracji Service Workera:', error));
             } else {
                 console.warn('Twoja przeglądarka nie wspiera Service Workerów. Powiadomienia nie będą działać.');
             }
         }
+        // --- KONIEC ZAKTUALIZOWANEJ FUNKCJI ---
 
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -186,7 +191,7 @@
         let recognition, isRecording = false;
 
         const THUMB_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path></svg>`;
-        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
+        const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14-.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
         
         function setAllIncomingAudio(enabled) { audioContainer.querySelectorAll('audio').forEach(audio => { audio.muted = !enabled; }); }
 
@@ -223,12 +228,10 @@
 
         function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.onclick = () => switchChat(id); if (id === 'public') { tabButton.id = 'tab-public'; tabButton.innerHTML = `<span class="tab-text">${name}</span>`; ui.publicChatTabs.appendChild(tabButton); } else { tabButton.id = `tab-private-${id}`; const relationshipIcon = document.createElement('span'); relationshipIcon.className = 'relationship-icon'; relationshipIcon.dataset.partner = id; relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); }; const tabText = document.createElement('span'); tabText.className = 'tab-text'; tabText.textContent = name; const closeBtn = document.createElement('span'); closeBtn.className = 'close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); }; tabButton.appendChild(relationshipIcon); tabButton.appendChild(tabText); tabButton.appendChild(closeBtn); ui.privateChatTabs.appendChild(tabButton); updateRelationshipIcon(id); } }
         
-        // --- START ZAKTUALIZOWANEJ FUNKCJI ---
         function toggleRelationship(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             if (!currentUserData) return;
             
-            // Zapewnij, że obiekt 'relationships' istnieje
             if (!currentUserData.relationships) {
                 currentUserData.relationships = {};
             }
@@ -240,25 +243,18 @@
             else if (currentStatus === 'favorite') nextStatus = 'blocked';
             else if (currentStatus === 'blocked') nextStatus = 'neutral';
 
-            // Optymistyczna aktualizacja UI
-            // 1. Zaktualizuj stan lokalnie
             currentUserData.relationships[partner] = nextStatus;
-            // 2. Natychmiast odśwież ikonę
             updateRelationshipIcon(partner);
 
-            // 3. Poproś o subskrypcję, jeśli użytkownik jest oznaczany jako ulubiony
             if (nextStatus === 'favorite') {
                 console.log("Użytkownik oznaczony jako ulubiony. Inicjowanie subskrypcji powiadomień...");
-                // To wywoła prośbę o zgodę na powiadomienia, jeśli jeszcze nie została udzielona
                 subscribeUserForPush(); 
             }
 
-            // 4. Wyślij aktualizację do serwera w tle
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } }));
             }
         }
-        // --- KONIEC ZAKTUALIZOWANEJ FUNKCJI ---
         
         function updateRelationshipIcon(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`); if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return; const status = currentUserData.relationships[partner] || 'neutral'; icon.classList.remove('favorite', 'blocked'); if (status === 'favorite') { icon.innerHTML = THUMB_UP_SVG; icon.classList.add('favorite'); icon.title = 'Ulubiony (otrzymujesz powiadomienia)'; } else if (status === 'blocked') { icon.innerHTML = THUMB_DOWN_SVG; icon.classList.add('blocked'); icon.title = 'Zablokowany'; } else { icon.innerHTML = THUMB_UP_SVG; icon.title = 'Neutralny'; } }
         function switchChat(id) { activeChat = id; if (id === 'public') { ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; } else { ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } ui.headerTitle.style.color = 'var(--private-msg-color)'; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } updateAllVoiceConnections(); }
@@ -309,7 +305,10 @@
                             localStorage.setItem('forumUsername', storedUsername);
                         }
                         removeActiveForms();
-                        // Subskrypcja jest teraz wywoływana po kliknięciu w "łapkę"
+                        
+                        // ZMIANA: Proaktywne pytanie o zgodę na powiadomienia zaraz po zalogowaniu.
+                        subscribeUserForPush();
+                        
                         break;
                     case 'join_failed':
                         alert(`Logowanie nieudane: ${data.payload.reason}`);
@@ -345,4 +344,4 @@
         connectWebSocket();
     </script>
 </body>
-</html>
+</html>```
