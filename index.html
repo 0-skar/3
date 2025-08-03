@@ -58,9 +58,10 @@
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; position: relative; display: flex; align-items: center; justify-content: space-between; }
         .private-chat-tabs .tab-button { width: auto; padding: 8px 12px; }
         .tab-button .tab-text { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
-        .tab-button .close-tab-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; padding-left: 8px; line-height: 1; }
-        .close-tab-btn:hover { color: var(--text-color); }
-        .tab-button:hover { background-color: var(--hover-color); } .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
+        .tab-button .tab-actions { display: flex; align-items: center; padding-left: 8px; }
+        .tab-button .tab-action-btn { font-size: 1.2rem; color: var(--text-muted-color); cursor: pointer; line-height: 1; background: none; border: none; padding: 0 2px; }
+        .tab-action-btn:hover { color: var(--text-color); }
+        .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         .relationship-icon { cursor: pointer; margin-right: 8px; transition: color 0.2s; color: var(--private-msg-color); display: inline-flex; align-items: center; vertical-align: middle; }
         .relationship-icon svg { width: 1.1em; height: 1.1em; }
         .relationship-icon.favorite { color: var(--notification-color); }
@@ -95,7 +96,7 @@
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
-                    <div class="sidebar-heading"> <h3>Użytkownicy</h3> <button id="clear-history-btn" title="Wyczyść cały czat publiczny">🗑️</button> </div>
+                    <div class="sidebar-heading"> <h3>Użytkownicy</h3> <button id="clear-history-btn" title="Wyczyść cały czat publiczny i WSZYSTKIE prywatne rozmowy">🗑️</button> </div>
                     <div id="user-slots-container"></div>
                     <div id="new-user-slot"></div>
                 </div>
@@ -110,74 +111,11 @@
     
     <script>
         // ########## SEKCJA POWIADOMIEŃ PUSH - START ##########
-
         const VAPID_PUBLIC_KEY = "BD8O0XhtyebRHHOUgMtsdkNl1j6C_ugAmEPGnXEiy-SuDK6JJIYgrdKXquvk3gmYuujmmft7WQMnTZlibryenyQ=";
-
-        // --- START ZAKTUALIZOWANEJ FUNKCJI ---
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                // ZMIANA: Usunięto '/' z początku ścieżki (było '/service-worker.js').
-                // Teraz przeglądarka będzie szukać pliku w tym samym folderze co index.html,
-                // co jest bardziej niezawodne dla GitHub Pages.
-                navigator.serviceWorker.register('service-worker.js') 
-                    .then(registration => console.log('Service Worker zarejestrowany pomyślnie:', registration))
-                    .catch(error => console.error('Błąd rejestracji Service Workera:', error));
-            } else {
-                console.warn('Twoja przeglądarka nie wspiera Service Workerów. Powiadomienia nie będą działać.');
-            }
-        }
-        // --- KONIEC ZAKTUALIZOWANEJ FUNKCJI ---
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-        async function subscribeUserForPush() {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                console.warn('Powiadomienia Push nie są wspierane w tej przeglądarce.');
-                return;
-            }
-
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                const existingSubscription = await registration.pushManager.getSubscription();
-
-                if (existingSubscription) {
-                    console.log('Użytkownik jest już zasubskrybowany.');
-                    sendSubscriptionToBackend(existingSubscription);
-                } else {
-                    console.log('Użytkownik nie jest zasubskrybowany. Prośba o subskrypcję...');
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                    });
-                    console.log('Nowa subskrypcja uzyskana:', subscription);
-                    sendSubscriptionToBackend(subscription);
-                }
-            } catch (error) {
-                console.error('Błąd podczas subskrypcji powiadomień:', error);
-                if (Notification.permission === 'denied') {
-                    alert('Zablokowałeś(aś) powiadomienia. Aby je otrzymywać, musisz zmienić ustawienia w swojej przeglądarce.');
-                }
-            }
-        }
-
-        function sendSubscriptionToBackend(subscription) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'register_push_subscription',
-                    payload: { subscription }
-                }));
-            }
-        }
-        
+        function registerServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').then(r => console.log('SW registered.')).catch(e => console.error('SW error.', e)); } }
+        function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
+        async function subscribeUserForPush() { if (!('serviceWorker' in navigator) || !('PushManager' in window)) { return; } try { const registration = await navigator.serviceWorker.ready; const existingSubscription = await registration.pushManager.getSubscription(); if (existingSubscription) { sendSubscriptionToBackend(existingSubscription); } else { const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }); sendSubscriptionToBackend(subscription); } } catch (error) { if (Notification.permission === 'denied') { alert('Zablokowałeś powiadomienia.'); } } }
+        function sendSubscriptionToBackend(subscription) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'register_push_subscription', payload: { subscription } })); } }
         // ########## SEKCJA POWIADOMIEŃ PUSH - KONIEC ##########
 
         const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button[type="submit"]'), micToTextBtn: document.getElementById('mic-to-text-btn'), chatWindows: document.getElementById('chat-windows'), publicChatTabs: document.getElementById('chat-tabs'), privateChatTabs: document.getElementById('private-chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn'), privateChatIndicator: document.getElementById('private-chat-indicator'), headerTitle: document.getElementById('header-title') };
@@ -201,61 +139,19 @@
             recognition.onend = () => { isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; setAllIncomingAudio(isVoiceActive); if (ui.input.value.trim()) { ui.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); } };
             recognition.onresult = (event) => { let final_transcript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { final_transcript += event.results[i][0].transcript; } ui.input.value = final_transcript; };
             recognition.onerror = (event) => { console.error("Błąd rozpoznawania mowy:", event.error, event.message); isRecording = false; ui.micToTextBtn.classList.remove('listening'); ui.micToTextBtn.title = 'Nagraj wiadomość głosową'; setAllIncomingAudio(isVoiceActive); };
-            
-            ui.micToTextBtn.addEventListener('click', () => {
-                if (isRecording) { recognition.stop(); } 
-                else { if (isVoiceActive) { toggleVoice(); } recognition.start(); }
-            });
-        } else { console.log("Web Speech API nie jest wspierane."); ui.micToTextBtn.style.display = 'none'; }
+            ui.micToTextBtn.addEventListener('click', () => { if (isRecording) { recognition.stop(); } else { if (isVoiceActive) { toggleVoice(); } recognition.start(); } });
+        } else { ui.micToTextBtn.style.display = 'none'; }
         
         async function updateAllVoiceConnections() { if (!isVoiceActive || !localStream || !sessionUsername) { Object.keys(peerConnections).forEach(cleanupVoiceChat); return; } const currentActiveUsers = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username); let targets = []; if (activeChat === 'public') { targets = currentActiveUsers; } else if (currentActiveUsers.includes(activeChat)) { targets = [activeChat]; } Object.keys(peerConnections).forEach(peer => { if (!targets.includes(peer)) { cleanupVoiceChat(peer); } }); for (const target of targets) { if (!peerConnections[target]) { const pc = createPeerConnection(target); try { const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal(target, { type: 'offer', sdp: offer.sdp }); } catch (e) { console.error(`Błąd tworzenia oferty dla ${target}:`, e); } } } }
         function sendSignal(recipient, signal) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
         function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = event => { let audio = document.getElementById(`audio-${targetUser}`); if (!audio) { audio = document.createElement('audio'); audio.id = `audio-${targetUser}`; audio.autoplay = true; audio.playsInline = true; audioContainer.appendChild(audio); } audio.srcObject = event.streams[0]; audio.muted = !isVoiceActive; }; pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser); if (localStream) { localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); } peerConnections[targetUser] = pc; return pc; }
         function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); }
         async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
+        async function toggleVoice() { if (isRecording) { recognition.stop(); } if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); } catch (err) { alert("Nie udało się uzyskać dostępu do mikrofonu."); return; } } isVoiceActive = !isVoiceActive; if (isVoiceActive) { audioContainer.querySelectorAll('audio').forEach(audio => audio.play().catch(e => console.warn("Interakcja potrzebna do audio."))); } localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive); setAllIncomingAudio(isVoiceActive); updateAllVoiceConnections(); const voiceBtn = document.getElementById('self-voice-toggle-btn'); if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); } }
+
+        function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.onclick = () => switchChat(id); if (id === 'public') { tabButton.id = 'tab-public'; tabButton.innerHTML = `<span class="tab-text">${name}</span>`; ui.publicChatTabs.appendChild(tabButton); } else { tabButton.id = `tab-private-${id}`; const relationshipIcon = document.createElement('span'); relationshipIcon.className = 'relationship-icon'; relationshipIcon.dataset.partner = id; relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); }; const tabText = document.createElement('span'); tabText.className = 'tab-text'; tabText.textContent = name; const tabActions = document.createElement('div'); tabActions.className = 'tab-actions'; const deleteBtn = document.createElement('button'); deleteBtn.className = 'tab-action-btn delete-history-btn'; deleteBtn.innerHTML = '🗑️'; deleteBtn.title = 'Usuń historię tej rozmowy'; deleteBtn.onclick = (e) => { e.stopPropagation(); if (confirm('Czy na pewno chcesz trwale usunąć całą historię tej prywatnej rozmowy? Tej akcji nie można cofnąć.')) { socket.send(JSON.stringify({ type: 'delete_private_history', payload: { partner: id } })); } }; const closeBtn = document.createElement('button'); closeBtn.className = 'tab-action-btn close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.title = 'Zamknij czat'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); }; tabActions.appendChild(deleteBtn); tabActions.appendChild(closeBtn); tabButton.appendChild(relationshipIcon); tabButton.appendChild(tabText); tabButton.appendChild(tabActions); ui.privateChatTabs.appendChild(tabButton); updateRelationshipIcon(id); } }
         
-        async function toggleVoice() {
-            if (isRecording) { recognition.stop(); }
-            if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); } catch (err) { console.error("Błąd dostępu do mikrofonu:", err); alert("Nie udało się uzyskać dostępu do mikrofonu."); return; } }
-            isVoiceActive = !isVoiceActive;
-            if (isVoiceActive) { audioContainer.querySelectorAll('audio').forEach(audio => audio.play().catch(e => console.warn("Interakcja potrzebna do audio."))); }
-            localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive);
-            setAllIncomingAudio(isVoiceActive);
-            updateAllVoiceConnections();
-            const voiceBtn = document.getElementById('self-voice-toggle-btn');
-            if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); }
-        }
-
-        function createChatWindow(id, name) { if (document.getElementById(`messages-${id}`)) return; const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; ui.chatWindows.appendChild(messagesDiv); const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.onclick = () => switchChat(id); if (id === 'public') { tabButton.id = 'tab-public'; tabButton.innerHTML = `<span class="tab-text">${name}</span>`; ui.publicChatTabs.appendChild(tabButton); } else { tabButton.id = `tab-private-${id}`; const relationshipIcon = document.createElement('span'); relationshipIcon.className = 'relationship-icon'; relationshipIcon.dataset.partner = id; relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); }; const tabText = document.createElement('span'); tabText.className = 'tab-text'; tabText.textContent = name; const closeBtn = document.createElement('span'); closeBtn.className = 'close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); }; tabButton.appendChild(relationshipIcon); tabButton.appendChild(tabText); tabButton.appendChild(closeBtn); ui.privateChatTabs.appendChild(tabButton); updateRelationshipIcon(id); } }
-        
-        function toggleRelationship(partner) {
-            const currentUserData = allUsers.find(u => u.username === sessionUsername);
-            if (!currentUserData) return;
-            
-            if (!currentUserData.relationships) {
-                currentUserData.relationships = {};
-            }
-
-            const currentStatus = currentUserData.relationships[partner] || 'neutral';
-            
-            let nextStatus = 'neutral';
-            if (currentStatus === 'neutral') nextStatus = 'favorite';
-            else if (currentStatus === 'favorite') nextStatus = 'blocked';
-            else if (currentStatus === 'blocked') nextStatus = 'neutral';
-
-            currentUserData.relationships[partner] = nextStatus;
-            updateRelationshipIcon(partner);
-
-            if (nextStatus === 'favorite') {
-                console.log("Użytkownik oznaczony jako ulubiony. Inicjowanie subskrypcji powiadomień...");
-                subscribeUserForPush(); 
-            }
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } }));
-            }
-        }
-        
+        function toggleRelationship(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (!currentUserData) return; if (!currentUserData.relationships) { currentUserData.relationships = {}; } const currentStatus = currentUserData.relationships[partner] || 'neutral'; let nextStatus = 'neutral'; if (currentStatus === 'neutral') nextStatus = 'favorite'; else if (currentStatus === 'favorite') nextStatus = 'blocked'; else if (currentStatus === 'blocked') nextStatus = 'neutral'; currentUserData.relationships[partner] = nextStatus; updateRelationshipIcon(partner); if (nextStatus === 'favorite') { subscribeUserForPush(); } if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } })); } }
         function updateRelationshipIcon(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`); if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return; const status = currentUserData.relationships[partner] || 'neutral'; icon.classList.remove('favorite', 'blocked'); if (status === 'favorite') { icon.innerHTML = THUMB_UP_SVG; icon.classList.add('favorite'); icon.title = 'Ulubiony (otrzymujesz powiadomienia)'; } else if (status === 'blocked') { icon.innerHTML = THUMB_DOWN_SVG; icon.classList.add('blocked'); icon.title = 'Zablokowany'; } else { icon.innerHTML = THUMB_UP_SVG; icon.title = 'Neutralny'; } }
         function switchChat(id) { activeChat = id; if (id === 'public') { ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; } else { ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } ui.headerTitle.style.color = 'var(--private-msg-color)'; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } updateAllVoiceConnections(); }
         function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
@@ -290,8 +186,26 @@
                     case 'history_cleared':
                         const publicChat = document.getElementById('messages-public');
                         if(publicChat) publicChat.innerHTML = '';
-                        addMessage({username:'System', message:'Czat został wyczyszczony'}, 'public');
+                        addMessage({username:'System', message:'Czat publiczny został wyczyszczony'}, 'public');
                         break;
+                    case 'all_private_history_cleared':
+                        document.querySelectorAll('.messages[id^="messages-"]').forEach(el => {
+                            if (el.id !== 'messages-public') {
+                                el.innerHTML = '';
+                                const partnerId = el.id.replace('messages-', '');
+                                addMessage({username: 'System', message: 'Historia tej rozmowy została usunięta przez moderatora.'}, partnerId);
+                            }
+                        });
+                        break;
+                    case 'private_history_cleared': {
+                        const partner = data.payload.partner;
+                        const messagesDiv = document.getElementById(`messages-${partner}`);
+                        if (messagesDiv) {
+                            messagesDiv.innerHTML = '';
+                            addMessage({username: 'System', message: 'Historia tej rozmowy została usunięta.'}, partner);
+                        }
+                        break;
+                    }
                     case 'private_history':
                         const partner = data.payload.partner;
                         const history = data.payload.history;
@@ -305,10 +219,7 @@
                             localStorage.setItem('forumUsername', storedUsername);
                         }
                         removeActiveForms();
-                        
-                        // ZMIANA: Proaktywne pytanie o zgodę na powiadomienia zaraz po zalogowaniu.
                         subscribeUserForPush();
-                        
                         break;
                     case 'join_failed':
                         alert(`Logowanie nieudane: ${data.payload.reason}`);
@@ -334,7 +245,7 @@
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; if (activeChat !== 'public') { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (currentUserData.relationships[activeChat] === 'blocked') { alert('Nie możesz wysłać wiadomości. Odblokuj najpierw tego użytkownika.'); return; } } const type = activeChat === 'public' ? 'chat_message' : 'private_message'; const payload = activeChat === 'public' ? { message } : { recipient: activeChat, message }; socket.send(JSON.stringify({ type, payload })); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
-        ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator && confirm('Czy na pewno chcesz wyczyścić cały czat publiczny?')) socket.send(JSON.stringify({ type: 'clear_history' })); });
+        ui.clearHistoryBtn.addEventListener('click', () => { if(isModerator && confirm('UWAGA: Czy na pewno chcesz trwale usunąć CAŁĄ historię czatu publicznego ORAZ WSZYSTKIE prywatne rozmowy wszystkich użytkowników? Tej akcji nie można cofnąć.')) socket.send(JSON.stringify({ type: 'clear_history' })); });
         ui.privateChatIndicator.onclick = () => { if(lastPrivateChatPartner) { openPrivateChat(lastPrivateChatPartner); } };
 
         // Inicjalizacja
