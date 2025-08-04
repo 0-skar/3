@@ -28,7 +28,7 @@
         .sidebar.collapsed { width: 0; min-width: 0; border-left: none; overflow: hidden; }
         .sidebar-heading { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 0 0; margin-bottom: 15px; }
         .sidebar-heading h3 { margin: 0; font-size: clamp(0.75rem, 3vw, 0.9rem); text-transform: uppercase; color: var(--text-muted-color); }
-        .header-left-panel { display: flex; align-items: center; gap: 20px; }
+        .header-left-panel { display: flex; align-items: center; gap: 12px; }
         .header-right-panel { display: flex; align-items: center; gap: 10px; }
         #sidebar-toggle { position: static; width: 30px; height: 30px; background-color: var(--accent-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
         #private-chat-indicator { display: none; background-color: #40444b; color: var(--text-muted-color); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: background-color 0.3s; }
@@ -63,9 +63,7 @@
         .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         .relationship-icon { cursor: pointer; margin-right: 8px; transition: color 0.2s; color: var(--private-msg-color); display: inline-flex; align-items: center; vertical-align: middle; }
         .relationship-icon svg { width: 1.1em; height: 1.1em; }
-        /* <<< POCZĄTEK POPRAWKI >>> */
-        .relationship-icon.favorite { color: var(--private-msg-color); } /* Zmieniono kolor na złoty */
-        /* <<< KONIEC POPRAWKI >>> */
+        .relationship-icon.favorite { color: var(--private-msg-color); }
         .relationship-icon.blocked { color: var(--danger-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
         .user-slot.inactive { opacity: 0.6; }
@@ -82,15 +80,49 @@
         .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
+
+        /* <<< POCZĄTEK NOWYCH STYLÓW >>> */
+        #home-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted-color);
+            text-decoration: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            transition: background-color 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+        #home-link:hover {
+            background-color: var(--hover-color);
+            color: var(--text-color);
+        }
+        #home-link svg {
+            width: 22px;
+            height: 22px;
+        }
+        /* <<< KONIEC NOWYCH STYLÓW >>> */
     </style>
 </head>
 <body>
     <div class="app-layout">
         <div class="main-content">
             <div class="chat-area">
-                <div class="chat-header" id="chat-header"> <span id="header-title">Forum</span>
-                    <div class="header-right-panel"> <span id="private-chat-indicator"></span> <button id="sidebar-toggle"><</button> </div>
+                <!-- <<< POCZĄTEK ZMIANY W HTML >>> -->
+                <div class="chat-header" id="chat-header">
+                    <div class="header-left-panel">
+                        <a href="https://0-skar.github.io/0/" id="home-link" title="Strona główna" target="_blank" rel="noopener noreferrer">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+                        </a>
+                        <span id="header-title">Forum</span>
+                    </div>
+                    <div class="header-right-panel">
+                        <span id="private-chat-indicator"></span>
+                        <button id="sidebar-toggle"><</button>
+                    </div>
                 </div>
+                <!-- <<< KONIEC ZMIANY W HTML >>> -->
                 <div class="private-chat-tabs" id="private-chat-tabs"></div>
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
