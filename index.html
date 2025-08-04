@@ -151,7 +151,7 @@
             const messagesDiv = document.createElement('ul');
             messagesDiv.className = 'messages';
             messagesDiv.id = `messages-${id}`;
-            messagesDiv.style.display = 'none'; // <<< POPRAWKA: Nowe okna czatu są domyślnie ukryte
+            messagesDiv.style.display = 'none';
             ui.chatWindows.appendChild(messagesDiv);
             const tabButton = document.createElement('button');
             tabButton.className = 'tab-button';
@@ -252,17 +252,32 @@
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => { console.log('Połączono z WebSocket.'); loadHistory(); };
+
+            // <<< POCZĄTEK ZMIAN >>>
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 switch(data.type) {
-                    case 'user_update': renderUsers(data.payload.users); break;
-                    case 'chat_message': addMessage(data.payload, 'public'); break;
+                    case 'user_update': 
+                        renderUsers(data.payload.users); 
+                        break;
+                    case 'chat_message':
+                        // IGNORUJ WIADOMOŚĆ, JEŚLI SAMI JĄ WYSŁALIŚMY (serwer ją odsyła - "echo")
+                        if (data.payload.username === sessionUsername) break; 
+                        addMessage(data.payload, 'public'); 
+                        break;
                     case 'private_message':
+                        // IGNORUJ WIADOMOŚĆ PRYWATNĄ, JEŚLI SAMI JĄ WYSŁALIŚMY
+                        if (data.payload.sender === sessionUsername) break;
+
                         const sender = data.payload.sender;
                         const recipient = data.payload.recipient;
                         const chatPartner = sender === sessionUsername ? recipient : sender;
-                        if (!document.getElementById(`messages-${chatPartner}`)) { createChatWindow(chatPartner, `Priv: ${chatPartner}`); }
+
+                        if (!document.getElementById(`messages-${chatPartner}`)) { 
+                            createChatWindow(chatPartner, `Priv: ${chatPartner}`); 
+                        }
                         addMessage(data.payload, chatPartner);
+
                         if (sender !== sessionUsername) {
                             if (activeChat !== chatPartner) {
                                 ui.privateChatIndicator.classList.add('has-unread');
@@ -274,6 +289,8 @@
                             ui.privateChatIndicator.style.display = 'inline-block';
                         }
                         break;
+                    // <<< KONIEC ZMIAN w 'chat_message' i 'private_message' >>>
+
                     case 'history_cleared':
                         const publicChat = document.getElementById('messages-public');
                         if(publicChat) publicChat.innerHTML = '';
@@ -326,7 +343,6 @@
         function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
         
-        // <<< POCZĄTEK POPRAWIONEGO BLOKU KODU >>>
         ui.form.addEventListener('submit', (e) => {
             e.preventDefault();
             const message = ui.input.value.trim();
@@ -337,10 +353,9 @@
             if (activeChat === 'public') {
                 type = 'chat_message';
                 payload = { message };
-                // Przygotuj dane wiadomości do natychmiastowego wyświetlenia
                 messageData = { username: sessionUsername, message: message, timestamp: new Date().toISOString() };
                 targetChat = 'public';
-            } else { // Wiadomość prywatna
+            } else { 
                 const currentUserData = allUsers.find(u => u.username === sessionUsername);
                 if (currentUserData.relationships && currentUserData.relationships[activeChat] === 'blocked') {
                     alert('Nie możesz wysłać wiadomości. Odblokuj najpierw tego użytkownika.');
@@ -348,20 +363,18 @@
                 }
                 type = 'private_message';
                 payload = { recipient: activeChat, message };
-                // Przygotuj dane wiadomości do natychmiastowego wyświetlenia
                 messageData = { sender: sessionUsername, message: message, timestamp: new Date().toISOString() };
                 targetChat = activeChat;
             }
             
-            // Dodaj wiadomość lokalnie (natychmiast) do właściwego okna czatu
+            // Krok 1: Dodajemy wiadomość lokalnie, dla natychmiastowego efektu.
             addMessage(messageData, targetChat);
             
-            // Wyślij wiadomość na serwer, aby dostarczyć ją innym
+            // Krok 2: Wysyłamy wiadomość na serwer.
             socket.send(JSON.stringify({ type, payload }));
 
             ui.input.value = '';
         });
-        // <<< KONIEC POPRAWIONEGO BLOKU KODU >>>
         
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         
