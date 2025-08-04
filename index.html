@@ -80,36 +80,33 @@
         .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
+        #home-link { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted-color); text-decoration: none; border-radius: 50%; width: 34px; height: 34px; transition: background-color 0.2s, color 0.2s; flex-shrink: 0; }
+        #home-link:hover { background-color: var(--hover-color); color: var(--text-color); }
+        #home-link svg { width: 22px; height: 22px; }
 
-        /* <<< POCZĄTEK NOWYCH STYLÓW >>> */
-        #home-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted-color);
-            text-decoration: none;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            transition: background-color 0.2s, color 0.2s;
-            flex-shrink: 0;
+        /* <<< POCZĄTEK NOWEGO KODU CSS DLA TŁA >>> */
+        #chat-windows::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('https://raw.githubusercontent.com/0-skar/3/refs/heads/main/Trans%20S.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.1; /* Regulacja przezroczystości tła */
+            pointer-events: none; /* Zapobiega przechwytywaniu kliknięć myszy */
         }
-        #home-link:hover {
-            background-color: var(--hover-color);
-            color: var(--text-color);
-        }
-        #home-link svg {
-            width: 22px;
-            height: 22px;
-        }
-        /* <<< KONIEC NOWYCH STYLÓW >>> */
+        /* <<< KONIEC NOWEGO KODU CSS DLA TŁA >>> */
+
     </style>
 </head>
 <body>
     <div class="app-layout">
         <div class="main-content">
             <div class="chat-area">
-                <!-- <<< POCZĄTEK ZMIANY W HTML >>> -->
                 <div class="chat-header" id="chat-header">
                     <div class="header-left-panel">
                         <a href="https://0-skar.github.io/0/" id="home-link" title="Strona główna" target="_blank" rel="noopener noreferrer">
@@ -122,7 +119,6 @@
                         <button id="sidebar-toggle"><</button>
                     </div>
                 </div>
-                <!-- <<< KONIEC ZMIANY W HTML >>> -->
                 <div class="private-chat-tabs" id="private-chat-tabs"></div>
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
