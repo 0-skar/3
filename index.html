@@ -1,3 +1,14 @@
+.relationship-icon.favorite { color: var(--private-msg-color); }```
+
+To wszystko!
+
+---
+
+### Pełny, gotowy kod pliku `index.html`
+
+Aby maksymalnie ułatwić zadanie, poniżej znajduje się kompletny plik `index.html` z już wprowadzoną tą jedną, małą zmianą. Po prostu podmień całą zawartość swojego pliku na poniższą i gotowe!
+
+```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -63,7 +74,9 @@
         .tab-button.active { color: var(--text-color); background-color: var(--accent-color); } .tab-button.has-unread { animation: flash 1.5s infinite; }
         .relationship-icon { cursor: pointer; margin-right: 8px; transition: color 0.2s; color: var(--private-msg-color); display: inline-flex; align-items: center; vertical-align: middle; }
         .relationship-icon svg { width: 1.1em; height: 1.1em; }
-        .relationship-icon.favorite { color: var(--notification-color); }
+        /* <<< POCZĄTEK POPRAWKI >>> */
+        .relationship-icon.favorite { color: var(--private-msg-color); } /* Zmieniono kolor na złoty */
+        /* <<< KONIEC POPRAWKI >>> */
         .relationship-icon.blocked { color: var(--danger-color); }
         .user-slot { display: flex; flex-direction: column; padding: 10px; margin-bottom: 8px; background-color: var(--background-color); border-radius: 5px; border: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; }
         .user-slot.inactive { opacity: 0.6; }
@@ -127,7 +140,6 @@
 
         const THUMB_UP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"></path></svg>`;
         const THUMB_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14-.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17-.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg>`;
-        // <<< NOWA IKONA DZWONKA >>>
         const BELL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path></svg>`;
 
         function setAllIncomingAudio(enabled) { audioContainer.querySelectorAll('audio').forEach(audio => { audio.muted = !enabled; }); }
@@ -185,7 +197,6 @@
         
         function toggleRelationship(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (!currentUserData) return; if (!currentUserData.relationships) { currentUserData.relationships = {}; } const currentStatus = currentUserData.relationships[partner] || 'neutral'; let nextStatus = 'neutral'; if (currentStatus === 'neutral') nextStatus = 'favorite'; else if (currentStatus === 'favorite') nextStatus = 'blocked'; else if (currentStatus === 'blocked') nextStatus = 'neutral'; currentUserData.relationships[partner] = nextStatus; updateRelationshipIcon(partner); if (nextStatus === 'favorite') { subscribeUserForPush(); } if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } })); } }
         
-        // <<< ZAKTUALIZOWANA FUNKCJA >>>
         function updateRelationshipIcon(partner) {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
             const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
@@ -195,15 +206,15 @@
             icon.classList.remove('favorite', 'blocked');
 
             if (status === 'favorite') {
-                icon.innerHTML = BELL_SVG; // Używamy dzwonka
-                icon.classList.add('favorite'); // Klasa nadaje zielony kolor
+                icon.innerHTML = BELL_SVG;
+                icon.classList.add('favorite');
                 icon.title = 'Powiadomienia włączone (Ulubiony)';
             } else if (status === 'blocked') {
-                icon.innerHTML = THUMB_DOWN_SVG; // Czerwony kciuk w dół
+                icon.innerHTML = THUMB_DOWN_SVG;
                 icon.classList.add('blocked');
                 icon.title = 'Zablokowany';
-            } else { // status 'neutral'
-                icon.innerHTML = THUMB_UP_SVG; // Domyślny żółty kciuk w górę
+            } else {
+                icon.innerHTML = THUMB_UP_SVG;
                 icon.title = 'Oznacz jako ulubionego (włącz powiadomienia)';
             }
         }
