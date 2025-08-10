@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kontakty</title>
-    <!-- POPRAWKA: Usunięto ukośnik na początku ścieżki -->
     <link rel="manifest" href="manifest.json">
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
@@ -32,7 +31,8 @@
 </head>
 <body>
 
-    <div id="contacts-view" class="view">
+    <!-- POPRAWKA 1: Dodano klasę 'active', aby ten widok był domyślnie widoczny -->
+    <div id="contacts-view" class="view active">
         <header>
             <a href="https://0-skar.github.io/3/">Przejdź do Forum</a>
             <span>Kontakty</span>
@@ -63,17 +63,22 @@
         const urlParams = new URLSearchParams(window.location.search);
         const caller = urlParams.get('caller');
 
+        // POPRAWKA 2: Uproszczona logika startowa
         if (caller) {
+            // Jeśli jest połączenie przychodzące, przełącz widoki
             document.title = `Dzwoni: ${caller}`;
             showIncomingCallView(caller);
         } else {
+            // W przeciwnym razie (domyślnie) po prostu połącz się, aby pobrać kontakty
             document.title = 'Kontakty';
-            showContactsView();
+            connectForContacts();
         }
 
         function showIncomingCallView(callerName) {
+            // Ukryj widok kontaktów i pokaż widok połączenia
             contactsView.classList.remove('active');
             incomingCallView.classList.add('active');
+            
             const callerNameDiv = document.getElementById('caller-name');
             const answerBtn = document.getElementById('answer-btn');
             const declineBtn = document.getElementById('decline-btn');
@@ -111,11 +116,7 @@
                 }
             };
         }
-        function showContactsView() {
-            incomingCallView.classList.remove('active');
-            contactsView.classList.add('active');
-            connectForContacts();
-        }
+
         function connectForContacts() {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => {
