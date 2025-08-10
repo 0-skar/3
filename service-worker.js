@@ -22,21 +22,26 @@ self.addEventListener('push', event => {
         badge: '/badge-72.png',
         data: {
             url: notificationData.url,
-            // Przekazujemy dodatkowe dane
             caller: notificationData.caller, 
         }
     };
     
-    // <<< POCZĄTEK NOWEJ LOGIKI DLA TYPÓW POWIADOMIEŃ >>>
     if (notificationData.type === 'incoming_call') {
-        options.tag = `incoming-call-${notificationData.caller}`; // Tag, by zastępować powiadomienia
-        options.requireInteraction = true; // Wymaga interakcji użytkownika
+        options.tag = `incoming-call-${notificationData.caller}`;
+        options.requireInteraction = true;
+        
+        // <<< POCZĄTEK NOWEJ LOGIKI DŹWIĘKU I WIBRACJI >>>
+        // UWAGA: Plik 'ringtone.mp3' musi znajdować się w głównym katalogu Twojej strony.
+        options.sound = 'ringtone.mp3'; 
+        // Wibracja: 200ms wibracji, 100ms pauzy, powtórzone
+        options.vibrate = [200, 100, 200, 100, 200, 100, 200];
+        // <<< KONIEC NOWEJ LOGIKI DŹWIĘKU I WIBRACJI >>>
+
         options.actions = [
             { action: 'answer', title: 'Odbierz' },
             { action: 'decline', title: 'Odrzuć' }
         ];
     }
-    // <<< KONIEC NOWEJ LOGIKI DLA TYPÓW POWIADOMIEŃ >>>
 
     event.waitUntil(self.registration.showNotification(title, options));
 });
@@ -47,19 +52,14 @@ self.addEventListener('notificationclick', event => {
     const urlToOpen = event.notification.data.url;
     event.notification.close();
 
-    // <<< POCZĄTEK NOWEJ LOGIKI OBSŁUGI AKCJI >>>
     if (event.action === 'answer') {
         console.log('[Service Worker] Wybrano akcję "Odbierz".');
-        // Otwórz okno z URL, który zawiera akcję do wykonania
         const promiseChain = clients.openWindow(urlToOpen);
         event.waitUntil(promiseChain);
     } else if (event.action === 'decline') {
         console.log('[Service Worker] Wybrano akcję "Odrzuć".');
-        // Nic więcej nie rób, powiadomienie jest już zamknięte.
-        // Opcjonalnie: można by wysłać sygnał odrzucenia do serwera
-        // fetch('/api/decline-call', { method: 'POST', body: JSON.stringify({ caller: event.notification.data.caller }) });
+        // Tutaj można w przyszłości wysłać sygnał odrzucenia do serwera
     } else {
-        // Domyślne zachowanie (kliknięcie w samo powiadomienie)
         const promiseChain = clients.matchAll({
             type: 'window',
             includeUncontrolled: true
@@ -75,5 +75,4 @@ self.addEventListener('notificationclick', event => {
         });
         event.waitUntil(promiseChain);
     }
-    // <<< KONIEC NOWEJ LOGIKI OBSŁUGI AKCJI >>>
 });
