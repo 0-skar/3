@@ -3,101 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Połączenie przychodzące</title>
+    <title>Kontakty</title>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #1e2124; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; text-align: center; }
-        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #23272a; color: white; }
+        .view { display: none; /* Wszystkie widoki domyślnie ukryte */ }
+        .view.active { display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Styl dla widoku listy kontaktów */
+        #contacts-view header { background-color: #1e2124; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        #contacts-view header a { color: #99aab5; text-decoration: none; font-size: 0.9rem; }
+        .contact-list { list-style-type: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #444; }
+        .contact-name { flex-grow: 1; font-size: 1.1rem; }
+        .contact-name.offline { color: #99aab5; }
+        .call-btn, .remove-btn { background: none; border: none; cursor: pointer; font-size: 1.5rem; padding: 5px 10px; }
+        .call-btn { color: #43b581; }
+        .remove-btn { color: #dc3545; }
+        #status { text-align: center; padding: 20px; color: #99aab5; }
+
+        /* Styl dla widoku połączenia przychodzącego */
+        #incoming-call-view { justify-content: center; align-items: center; text-align: center; }
         .caller-info { font-size: 2rem; font-weight: bold; }
         .buttons { display: flex; gap: 30px; margin-top: 40px; }
-        .call-btn { width: 80px; height: 80px; border-radius: 50%; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; transition: background-color 0.2s; }
+        .action-btn { width: 80px; height: 80px; border-radius: 50%; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; transition: background-color 0.2s; }
         #answer-btn { background-color: #43b581; }
         #decline-btn { background-color: #dc3545; }
-        #answer-btn:hover { background-color: #3aa873; }
-        #decline-btn:hover { background-color: #c82333; }
-        #forum-link { margin-top: 50px; color: #99aab5; text-decoration: none; }
     </style>
 </head>
 <body>
-    <div class="container">
+
+    <!-- Widok 1: Lista Kontaktów (domyślny) -->
+    <div id="contacts-view" class="view">
+        <header>
+            <span>Ulubione Kontakty</span>
+            <a href="/index.html">Przejdź do Forum</a>
+        </header>
+        <ul class="contact-list" id="contact-list"></ul>
+        <div id="status">Łączenie...</div>
+    </div>
+
+    <!-- Widok 2: Połączenie Przychodzące (aktywny po kliknięciu powiadomienia) -->
+    <div id="incoming-call-view" class="view">
         <div class="caller-info" id="caller-name">Dzwoni...</div>
         <div class="buttons">
-            <button id="decline-btn" class="call-btn" title="Odrzuć">❌</button>
-            <button id="answer-btn" class="call-btn" title="Odbierz">📞</button>
+            <button id="decline-btn" class="action-btn" title="Odrzuć">❌</button>
+            <button id="answer-btn" class="action-btn" title="Odbierz">📞</button>
         </div>
     </div>
-    <a href="/index.html" id="forum-link">Przejdź do Forum</a>
 
     <script>
         const hfSpaceUrl = "eosforus-chat.hf.space";
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
+        let socket;
+        let myUsername;
+        let peerConnection;
+        
+        // Główne elementy DOM
+        const contactsView = document.getElementById('contacts-view');
+        const incomingCallView = document.getElementById('incoming-call-view');
+        const contactList = document.getElementById('contact-list');
+        const statusDiv = document.getElementById('status');
+        
+        // Sprawdź parametry URL, aby zdecydować, który widok pokazać
         const urlParams = new URLSearchParams(window.location.search);
         const caller = urlParams.get('caller');
-        const callee = urlParams.get('callee');
 
-        let socket, peerConnection;
-        let ringtone = new Audio('ringtone.mp3');
-        ringtone.loop = true;
+        if (caller) {
+            // Mamy połączenie przychodzące
+            document.title = `Dzwoni: ${caller}`;
+            showIncomingCallView(caller);
+        } else {
+            // Pokazujemy domyślną listę kontaktów
+            document.title = 'Kontakty';
+            showContactsView();
+        }
 
-        document.getElementById('caller-name').textContent = `Dzwoni: ${caller}`;
+        // --- Logika dla Widoku Połączenia Przychodzącego ---
+        function showIncomingCallView(callerName) {
+            contactsView.classList.remove('active');
+            incomingCallView.classList.add('active');
+
+            const callerNameDiv = document.getElementById('caller-name');
+            const answerBtn = document.getElementById('answer-btn');
+            const declineBtn = document.getElementById('decline-btn');
+            
+            callerNameDiv.textContent = `Dzwoni: ${callerName}`;
+            
+            const ringtone = new Audio('ringtone.mp3');
+            ringtone.loop = true;
+            ringtone.play().catch(e => console.warn("Interakcja wymagana do odtworzenia dźwięku.", e));
+
+            answerBtn.onclick = () => {
+                ringtone.pause();
+                connectAndAnswer(callerName);
+            };
+
+            declineBtn.onclick = () => {
+                ringtone.pause();
+                // Ta logika jest trudniejsza, bo wymagałaby połączenia tylko po to by odrzucić.
+                // Na razie po prostu zamykamy okno.
+                window.close();
+            };
+        }
         
-        const answerBtn = document.getElementById('answer-btn');
-        const declineBtn = document.getElementById('decline-btn');
-
-        // Odtwarzaj dzwonek po wejściu na stronę
-        ringtone.play().catch(e => console.warn("Interakcja użytkownika potrzebna do odtworzenia dźwięku.", e));
-        
-        answerBtn.onclick = () => {
-            ringtone.pause();
-            connectAndAnswer();
-        };
-
-        declineBtn.onclick = () => {
-            ringtone.pause();
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'call_declined', payload: { caller: caller } }));
-            }
-            window.close(); // Zamknij kartę po odrzuceniu
-        };
-
-        function connectAndAnswer() {
+        function connectAndAnswer(callerName) {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => {
-                const storedUser = localStorage.getItem('forumUsername');
-                const storedPass = localStorage.getItem('forumPassword');
-                if (storedUser && storedPass !== null) {
-                    socket.send(JSON.stringify({ type: 'join', payload: { username: storedUser, password: storedPass } }));
+                myUsername = localStorage.getItem('forumUsername');
+                const myPassword = localStorage.getItem('forumPassword');
+                if (myUsername && myPassword !== null) {
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
                 } else {
                     alert("Błąd logowania. Zaloguj się na forum i poproś o ponowne połączenie.");
                 }
             };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                switch (data.type) {
-                    case 'join_success':
-                        // Pomyślnie zalogowano, informujemy dzwoniącego, że odebraliśmy
-                        socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: caller } }));
-                        // Teraz możemy nawiązać połączenie WebRTC
-                        initializeWebRTC();
-                        break;
-                    case 'webrtc_signal':
-                        handleWebRTCSignal(data.payload.sender, data.payload.signal);
-                        break;
+                if (data.type === 'join_success') {
+                    socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: callerName } }));
+                    initializeWebRTC(callerName);
+                } else if (data.type === 'webrtc_signal') {
+                    handleWebRTCSignal(data.payload.sender, data.payload.signal);
                 }
             };
         }
 
-        async function initializeWebRTC() {
+        // --- Logika dla Widoku Listy Kontaktów ---
+        function showContactsView() {
+            incomingCallView.classList.remove('active');
+            contactsView.classList.add('active');
+            connectForContacts();
+        }
+        
+        function connectForContacts() {
+            socket = new WebSocket(wsUrl);
+            socket.onopen = () => {
+                myUsername = localStorage.getItem('forumUsername');
+                const myPassword = localStorage.getItem('forumPassword');
+                if (myUsername && myPassword !== null) {
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
+                } else {
+                    statusDiv.textContent = 'Brak danych logowania. Zaloguj się najpierw na głównym forum.';
+                }
+            };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'join_success') {
+                    statusDiv.style.display = 'none';
+                } else if (data.type === 'user_update') {
+                    renderContacts(data.payload.users);
+                }
+            };
+            socket.onclose = () => {
+                statusDiv.textContent = 'Rozłączono. Spróbuj odświeżyć stronę.';
+            };
+        }
+
+        function renderContacts(allUsers) {
+            const me = allUsers.find(u => u.username === myUsername);
+            if (!me || !me.relationships) {
+                contactList.innerHTML = '';
+                statusDiv.textContent = 'Brak ulubionych kontaktów. Dodaj je na forum.';
+                statusDiv.style.display = 'block';
+                return;
+            }
+            contactList.innerHTML = '';
+            const favoriteUsernames = Object.keys(me.relationships).filter(user => me.relationships[user] === 'favorite');
+            if (favoriteUsernames.length === 0) {
+                 statusDiv.textContent = 'Brak ulubionych kontaktów. Dodaj je na forum.';
+                 statusDiv.style.display = 'block';
+                 return;
+            }
+            favoriteUsernames.forEach(username => {
+                const user = allUsers.find(u => u.username === username);
+                const li = document.createElement('li');
+                li.className = 'contact-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'contact-name';
+                nameSpan.textContent = username;
+                if (user && user.status === 'inactive') nameSpan.classList.add('offline');
+                const callButton = document.createElement('button');
+                callButton.className = 'call-btn';
+                callButton.textContent = '📞';
+                callButton.onclick = () => {
+                    socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
+                    alert(`Dzwonienie do ${username}...`);
+                };
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-btn';
+                removeButton.textContent = '✖';
+                removeButton.onclick = () => {
+                    if (confirm(`Czy na pewno chcesz usunąć ${username} z ulubionych?`)) {
+                        socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: username, status: 'neutral' } }));
+                    }
+                };
+                li.appendChild(nameSpan);
+                li.appendChild(callButton);
+                li.appendChild(removeButton);
+                contactList.appendChild(li);
+            });
+        }
+
+        // --- Wspólna logika WebRTC ---
+        async function initializeWebRTC(callerName) {
             try {
                 const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                peerConnection = createPeerConnection(caller);
+                peerConnection = createPeerConnection(callerName);
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
             } catch (err) {
-                console.error("Błąd dostępu do mikrofonu:", err);
                 alert("Nie można uzyskać dostępu do mikrofonu.");
             }
         }
-
         function createPeerConnection(targetUser) {
             const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate });
@@ -108,19 +225,15 @@
                 document.body.appendChild(audio);
             };
             pc.onconnectionstatechange = () => {
-                if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
-                    window.close();
-                }
+                if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) window.close();
             };
             return pc;
         }
-
         function sendSignal(recipient, signal) {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
             }
         }
-        
         async function handleWebRTCSignal(sender, signal) {
             if (!peerConnection) peerConnection = createPeerConnection(sender);
             try {
@@ -133,7 +246,7 @@
                     await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
                 }
             } catch (err) {
-                console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err);
+                console.error(`Błąd obsługi sygnału WebRTC:`, err);
             }
         }
     </script>
