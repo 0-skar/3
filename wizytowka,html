@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontakty</title>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #23272a; color: white; }
+        header { background-color: #1e2124; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; }
+        .contact-list { list-style-type: none; padding: 0; margin: 0; }
+        .contact-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #444; }
+        .contact-name { flex-grow: 1; font-size: 1.1rem; }
+        .contact-name.offline { color: #99aab5; }
+        .call-btn, .remove-btn { background: none; border: none; cursor: pointer; font-size: 1.5rem; padding: 5px 10px; }
+        .call-btn { color: #43b581; }
+        .remove-btn { color: #dc3545; }
+        #status { text-align: center; padding: 20px; color: #99aab5; }
+    </style>
+</head>
+<body>
+    <header>Ulubione Kontakty</header>
+    <ul class="contact-list" id="contact-list"></ul>
+    <div id="status">Łączenie...</div>
+
+    <script>
+        const hfSpaceUrl = "eosforus-chat.hf.space";
+        const wsUrl = `wss://${hfSpaceUrl}/ws/`;
+        let socket;
+        let myUsername;
+
+        const contactList = document.getElementById('contact-list');
+        const statusDiv = document.getElementById('status');
+
+        function connect() {
+            socket = new WebSocket(wsUrl);
+            socket.onopen = () => {
+                myUsername = localStorage.getItem('forumUsername');
+                const myPassword = localStorage.getItem('forumPassword');
+                if (myUsername && myPassword !== null) {
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
+                } else {
+                    statusDiv.textContent = 'Brak danych logowania. Zaloguj się najpierw na głównym forum.';
+                }
+            };
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'join_success') {
+                    statusDiv.style.display = 'none';
+                } else if (data.type === 'user_update') {
+                    renderContacts(data.payload.users);
+                }
+            };
+            socket.onclose = () => {
+                statusDiv.textContent = 'Rozłączono. Próbuję połączyć ponownie...';
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function renderContacts(allUsers) {
+            const me = allUsers.find(u => u.username === myUsername);
+            if (!me || !me.relationships) {
+                contactList.innerHTML = '';
+                statusDiv.textContent = 'Brak ulubionych kontaktów.';
+                statusDiv.style.display = 'block';
+                return;
+            }
+
+            contactList.innerHTML = '';
+            const favoriteUsernames = Object.keys(me.relationships).filter(
+                (user) => me.relationships[user] === 'favorite'
+            );
+
+            if (favoriteUsernames.length === 0) {
+                 statusDiv.textContent = 'Brak ulubionych kontaktów.';
+                 statusDiv.style.display = 'block';
+                 return;
+            }
+            
+            favoriteUsernames.forEach(username => {
+                const user = allUsers.find(u => u.username === username);
+                const li = document.createElement('li');
+                li.className = 'contact-item';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'contact-name';
+                nameSpan.textContent = username;
+                if (user && user.status === 'inactive') {
+                    nameSpan.classList.add('offline');
+                }
+                
+                const callButton = document.createElement('button');
+                callButton.className = 'call-btn';
+                callButton.textContent = '📞';
+                callButton.onclick = () => {
+                    socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
+                    alert(`Dzwonienie do ${username}...`);
+                };
+
+                const removeButton = document.createElement('button');
+                removeButton.className = 'remove-btn';
+                removeButton.textContent = '✖';
+                removeButton.onclick = () => {
+                    if (confirm(`Czy na pewno chcesz usunąć ${username} z ulubionych?`)) {
+                        socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: username, status: 'neutral' } }));
+                    }
+                };
+                
+                li.appendChild(nameSpan);
+                li.appendChild(callButton);
+                li.appendChild(removeButton);
+                contactList.appendChild(li);
+            });
+        }
+
+        connect();
+    </script>
+</body>
+</html>
