@@ -1,3 +1,5 @@
+--- START OF FILE index.html ---
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -80,27 +82,48 @@
         .form-inline input { padding: 8px; margin-bottom: 5px; background: var(--secondary-bg-color); border: 1px solid var(--border-color); color: white; border-radius: 3px; font-size: 0.9rem; }
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
-        #home-link { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted-color); text-decoration: none; border-radius: 50%; width: 34px; height: 34px; transition: background-color 0.2s, color 0.2s; flex-shrink: 0; }
-        #home-link:hover { background-color: var(--hover-color); color: var(--text-color); }
-        #home-link svg { width: 22px; height: 22px; }
 
-        /* <<< POCZĄTEK NOWEGO KODU CSS DLA TŁA >>> */
-        #chat-windows::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: url('https://raw.githubusercontent.com/0-skar/3/refs/heads/main/Trans%20S.png');
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            opacity: 0.1; /* Regulacja przezroczystości tła */
-            pointer-events: none; /* Zapobiega przechwytywaniu kliknięć myszy */
+        #home-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted-color);
+            text-decoration: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            transition: background-color 0.2s, color 0.2s;
+            flex-shrink: 0;
         }
-        /* <<< KONIEC NOWEGO KODU CSS DLA TŁA >>> */
-
+        #home-link:hover {
+            background-color: var(--hover-color);
+            color: var(--text-color);
+        }
+        #home-link svg {
+            width: 22px;
+            height: 22px;
+        }
+        /* <<< POCZĄTEK NOWYCH STYLÓW DLA POŁĄCZEŃ >>> */
+        #call-btn {
+            display: none; /* Ukryty domyślnie */
+            background: none;
+            border: none;
+            color: var(--voice-active-color);
+            padding: 5px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            border-radius: 5px;
+            line-height: 1;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #call-btn:hover {
+            background-color: var(--hover-color);
+        }
+        #call-btn.calling {
+            color: var(--accent-color);
+            animation: pulse 1.5s infinite;
+        }
+        /* <<< KONIEC NOWYCH STYLÓW DLA POŁĄCZEŃ >>> */
     </style>
 </head>
 <body>
@@ -114,10 +137,14 @@
                         </a>
                         <span id="header-title">Forum</span>
                     </div>
+                    <!-- <<< POCZĄTEK ZMIANY W HTML (PRZENIESIENIE I DODANIE PRZYCISKU) >>> -->
                     <div class="header-right-panel">
                         <span id="private-chat-indicator"></span>
+                        <button id="call-btn" title="Zadzwoń">📞</button>
+                        <button id="clear-history-btn" title="Wyczyść cały czat publiczny">🗑️</button>
                         <button id="sidebar-toggle"><</button>
                     </div>
+                    <!-- <<< KONIEC ZMIANY W HTML >>> -->
                 </div>
                 <div class="private-chat-tabs" id="private-chat-tabs"></div>
                 <div class="chat-windows" id="chat-windows"></div>
@@ -125,7 +152,8 @@
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
-                    <div class="sidebar-heading"> <h3>Użytkownicy</h3> <button id="clear-history-btn" title="Wyczyść cały czat publiczny">🗑️</button> </div>
+                    <!-- <<< ZMIANA HTML: usunięto przycisk clear-history-btn stąd, bo jest teraz w nagłówku >>> -->
+                    <div class="sidebar-heading"> <h3>Użytkownicy</h3> </div>
                     <div id="user-slots-container"></div>
                     <div id="new-user-slot"></div>
                 </div>
@@ -145,7 +173,7 @@
         async function subscribeUserForPush() { if (!('serviceWorker' in navigator) || !('PushManager' in window)) { return; } try { const registration = await navigator.serviceWorker.ready; const existingSubscription = await registration.pushManager.getSubscription(); if (existingSubscription) { sendSubscriptionToBackend(existingSubscription); } else { const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }); sendSubscriptionToBackend(subscription); } } catch (error) { if (Notification.permission === 'denied') { alert('Zablokowałeś powiadomienia.'); } } }
         function sendSubscriptionToBackend(subscription) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'register_push_subscription', payload: { subscription } })); } }
 
-        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button[type="submit"]'), micToTextBtn: document.getElementById('mic-to-text-btn'), chatWindows: document.getElementById('chat-windows'), publicChatTabs: document.getElementById('chat-tabs'), privateChatTabs: document.getElementById('private-chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn'), privateChatIndicator: document.getElementById('private-chat-indicator'), headerTitle: document.getElementById('header-title') };
+        const ui = { form: document.getElementById('form'), input: document.getElementById('input'), sendButton: document.getElementById('form').querySelector('button[type="submit"]'), micToTextBtn: document.getElementById('mic-to-text-btn'), chatWindows: document.getElementById('chat-windows'), publicChatTabs: document.getElementById('chat-tabs'), privateChatTabs: document.getElementById('private-chat-tabs'), userSlotsContainer: document.getElementById('user-slots-container'), newUserSlot: document.getElementById('new-user-slot'), sidebar: document.getElementById('sidebar'), sidebarToggle: document.getElementById('sidebar-toggle'), clearHistoryBtn: document.getElementById('clear-history-btn'), privateChatIndicator: document.getElementById('private-chat-indicator'), headerTitle: document.getElementById('header-title'), callBtn: document.getElementById('call-btn') };
         let socket, sessionUsername = null, activeChat = 'public', isModerator = false, allUsers = [];
         let storedUsername = localStorage.getItem('forumUsername');
         let lastPrivateChatPartner = null;
@@ -235,6 +263,31 @@
                 icon.title = 'Oznacz jako ulubionego (włącz powiadomienia)';
             }
         }
+
+        // <<< POCZĄTEK NOWEJ FUNKCJI DLA PRZYCISKU POŁĄCZENIA >>>
+        function updateCallButtonVisibility() {
+            if (activeChat === 'public' || !sessionUsername) {
+                ui.callBtn.style.display = 'none';
+                return;
+            }
+            const currentUser = allUsers.find(u => u.username === sessionUsername);
+            const partnerUser = allUsers.find(u => u.username === activeChat);
+
+            if (currentUser && partnerUser && currentUser.relationships && partnerUser.relationships) {
+                const iLikePartner = currentUser.relationships[activeChat] === 'favorite';
+                const partnerLikesMe = partnerUser.relationships[sessionUsername] === 'favorite';
+
+                if (iLikePartner && partnerLikesMe) {
+                    ui.callBtn.style.display = 'block';
+                } else {
+                    ui.callBtn.style.display = 'none';
+                }
+            } else {
+                ui.callBtn.style.display = 'none';
+            }
+            ui.callBtn.classList.remove('calling');
+        }
+        // <<< KONIEC NOWEJ FUNKCJI DLA PRZYCISKU POŁĄCZENIA >>>
         
         function updateClearHistoryButtonState() {
             const currentUserData = allUsers.find(u => u.username === sessionUsername);
@@ -265,6 +318,7 @@
             if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } 
             updateAllVoiceConnections();
             updateClearHistoryButtonState();
+            updateCallButtonVisibility(); // <<< AKTUALIZUJ WIDOCZNOŚĆ PRZYCISKU POŁĄCZENIA
         }
 
         function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
@@ -273,7 +327,7 @@
             const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); 
             allUsers = users; 
             const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); 
-            if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); } 
+            if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); updateCallButtonVisibility(); } // <<< AKTUALIZUJ WIDOCZNOŚĆ PRZYCISKU POŁĄCZENIA
             const currentUserData = allUsers.find(u => u.username === sessionUsername); 
             const isActive = currentUserData && currentUserData.status === 'active'; 
             isModerator = isActive && currentUserData.role === 'moderator'; 
@@ -290,7 +344,24 @@
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
-            socket.onopen = () => { console.log('Połączono z WebSocket.'); loadHistory(); };
+            socket.onopen = () => {
+                console.log('Połączono z WebSocket.');
+                // <<< NOWA LOGIKA: Sprawdź czy trzeba odebrać połączenie >>>
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('action') === 'answer_call') {
+                    // Jeśli tak, spróbuj zalogować się z zapisaną nazwą użytkownika
+                    if (storedUsername) {
+                        showLoginForm(document.body, storedUsername, false);
+                        // Symulujemy submisję formularza logowania
+                        const loginForm = document.querySelector('.form-inline');
+                        if(loginForm) loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    } else {
+                        alert("Musisz być zalogowany, aby odebrać rozmowę. Zaloguj się, a następnie poproś o ponowne połączenie.");
+                    }
+                } else {
+                    loadHistory();
+                }
+            };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 switch(data.type) {
@@ -333,6 +404,21 @@
                         if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); }
                         removeActiveForms();
                         subscribeUserForPush();
+                        
+                        // <<< NOWA LOGIKA: Jeśli logowanie powiodło się po kliknięciu 'Odbierz' >>>
+                        const urlParams = new URLSearchParams(window.location.search);
+                        if (urlParams.get('action') === 'answer_call' && urlParams.get('caller')) {
+                            const caller = urlParams.get('caller');
+                            // Usuwamy parametry z URL, żeby nie próbować ponownie odebrać rozmowy po odświeżeniu
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            // Otwórz okno czatu z dzwoniącym i wyślij sygnał, że odebrano
+                            openPrivateChat(caller);
+                            socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: caller } }));
+                            // Automatycznie włącz głos
+                            if (!isVoiceActive) { toggleVoice(); }
+                        } else {
+                            loadHistory();
+                        }
                         break;
                     case 'join_failed':
                         alert(`Logowanie nieudane: ${data.payload.reason}`);
@@ -341,6 +427,28 @@
                         break;
                     case 'webrtc_signal':
                         if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal);
+                        break;
+                    // <<< NOWA LOGIKA: Obsługa zdarzeń związanych z dzwonieniem >>>
+                    case 'call_initiated':
+                        addMessage({username:'System', message:`Dzwonienie do ${data.payload.recipient}...`}, activeChat);
+                        ui.callBtn.classList.add('calling');
+                        ui.callBtn.title = "Dzwonienie...";
+                        break;
+                    case 'call_answered':
+                        addMessage({username:'System', message:`${data.payload.callee} odebrał(a) połączenie. Łączenie...`}, activeChat);
+                        ui.callBtn.classList.remove('calling');
+                        if (!isVoiceActive) { toggleVoice(); }
+                        else { updateAllVoiceConnections(); } // Już mamy głos, więc tylko nawiąż połączenie
+                        break;
+                    case 'call_declined':
+                        addMessage({username:'System', message:`${data.payload.callee} odrzucił(a) połączenie.`}, activeChat);
+                        ui.callBtn.classList.remove('calling');
+                        ui.callBtn.title = "Zadzwoń";
+                        break;
+                    case 'recipient_busy':
+                        addMessage({username:'System', message:`${data.payload.recipient} jest niedostępny lub prowadzi inną rozmowę.`}, activeChat);
+                        ui.callBtn.classList.remove('calling');
+                        ui.callBtn.title = "Zadzwoń";
                         break;
                 }
             };
@@ -395,6 +503,14 @@
 
         ui.privateChatIndicator.onclick = () => { if(lastPrivateChatPartner) { openPrivateChat(lastPrivateChatPartner); } };
 
+        // <<< NOWA LOGIKA: Obsługa kliknięcia przycisku dzwonienia >>>
+        ui.callBtn.addEventListener('click', () => {
+            if (!sessionUsername || activeChat === 'public' || ui.callBtn.classList.contains('calling')) return;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: activeChat } }));
+            }
+        });
+        
         // Inicjalizacja
         registerServiceWorker();
         createChatWindow('public', 'Czat Publiczny');
