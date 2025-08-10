@@ -1,7 +1,7 @@
 {
   "name": "Forum Głosowe - Kontakty",
   "short_name": "Kontakty",
-  "start_url": "/call.html",
+  "start_url": "call.html",
   "display": "standalone",
   "background_color": "#2c2f33",
   "theme_color": "#7289da",
