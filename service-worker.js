@@ -1,4 +1,4 @@
-self.addEventListener('push', event => {
+ self.addEventListener('push', event => {
     console.log('[Service Worker] Otrzymano powiadomienie push.');
     let notificationData = {};
     try {
