@@ -1,78 +1,46 @@
-// Plik: service-worker.js
-
 self.addEventListener('push', event => {
     console.log('[Service Worker] Otrzymano powiadomienie push.');
-
     let notificationData = {};
     try {
         notificationData = event.data.json();
     } catch (e) {
-        notificationData = {
-            type: 'message',
-            title: 'Nowa wiadomość',
-            body: event.data.text(),
-            url: '/'
-        };
+        return; // Nie rób nic jeśli dane są niepoprawne
     }
     
     const title = notificationData.title;
     const options = {
         body: notificationData.body,
-        icon: '/icon-192.png',
-        badge: '/badge-72.png',
-        data: {
-            url: notificationData.url,
-            caller: notificationData.caller, 
-        }
+        icon: 'icon-192.png',
+        badge: 'badge-72.png',
+        data: notificationData // Przekazujemy wszystkie dane
     };
     
     if (notificationData.type === 'incoming_call') {
         options.tag = `incoming-call-${notificationData.caller}`;
-        options.requireInteraction = true;
-        
-        // <<< POCZĄTEK NOWEJ LOGIKI DŹWIĘKU I WIBRACJI >>>
-        // UWAGA: Plik 'ringtone.mp3' musi znajdować się w głównym katalogu Twojej strony.
-        options.sound = 'ringtone.mp3'; 
-        // Wibracja: 200ms wibracji, 100ms pauzy, powtórzone
-        options.vibrate = [200, 100, 200, 100, 200, 100, 200];
-        // <<< KONIEC NOWEJ LOGIKI DŹWIĘKU I WIBRACJI >>>
-
+        options.requireInteraction = true; // Wymaga interakcji
         options.actions = [
             { action: 'answer', title: 'Odbierz' },
             { action: 'decline', title: 'Odrzuć' }
         ];
     }
-
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
-
 self.addEventListener('notificationclick', event => {
-    console.log('[Service Worker] Kliknięto w powiadomienie.');
-    const urlToOpen = event.notification.data.url;
     event.notification.close();
+    const data = event.notification.data;
 
+    // Zawsze otwieraj nową stronę połączenia, gdy kliknięto Odbierz
     if (event.action === 'answer') {
-        console.log('[Service Worker] Wybrano akcję "Odbierz".');
-        const promiseChain = clients.openWindow(urlToOpen);
-        event.waitUntil(promiseChain);
+        const urlToOpen = `/call.html?caller=${data.caller}&callee=${data.callee}`;
+        event.waitUntil(clients.openWindow(urlToOpen));
     } else if (event.action === 'decline') {
-        console.log('[Service Worker] Wybrano akcję "Odrzuć".');
-        // Tutaj można w przyszłości wysłać sygnał odrzucenia do serwera
+        // Można tu wysłać sygnał odrzucenia do serwera
     } else {
-        const promiseChain = clients.matchAll({
-            type: 'window',
-            includeUncontrolled: true
-        }).then(clientList => {
-            for (const client of clientList) {
-                if ('navigate' in client) {
-                    return client.navigate(urlToOpen).then(c => c.focus());
-                }
-            }
-            if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
-            }
-        });
-        event.waitUntil(promiseChain);
+        // Domyślne kliknięcie (jeśli nie w przycisk)
+        // otwiera czat na forum, jeśli to wiadomość
+        if (data.url) {
+            event.waitUntil(clients.openWindow(data.url));
+        }
     }
 });
