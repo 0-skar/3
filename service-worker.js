@@ -1,5 +1,3 @@
---- START OF FILE service-worker.js ---
-
 // Plik: service-worker.js - Wersja ostateczna, świadoma podfolderu
 
 self.addEventListener('push', event => {
