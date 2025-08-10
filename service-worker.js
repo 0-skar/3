@@ -1,5 +1,3 @@
---- START OF FILE service-worker.js ---
-
 // Plik: service-worker.js - Wersja ostateczna, z ujednoliconą obsługą kliknięć
 
 self.addEventListener('push', event => {
