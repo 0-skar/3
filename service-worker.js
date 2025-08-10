@@ -1,9 +1,10 @@
-// Plik: service-worker.js - Wersja z poprawną, relatywną ścieżką
+--- START OF FILE service-worker.js ---
+
+// Plik: service-worker.js - Wersja ostateczna, świadoma podfolderu
 
 self.addEventListener('push', event => {
     console.log('[Service Worker] Otrzymano powiadomienie push.');
     let notificationData = {};
-
     try {
         notificationData = event.data.json();
     } catch (e) {
@@ -32,17 +33,24 @@ self.addEventListener('push', event => {
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
-
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     const data = event.notification.data;
+
+    // <<< POCZĄTEK KLUCZOWEJ POPRAWKI: Inteligentne budowanie ścieżki >>>
+    // Pobieramy pełną ścieżkę do samego pliku service-workera, np. "/3/service-worker.js"
+    const swPath = self.location.pathname; 
+    // Wycinamy z niej ścieżkę do folderu nadrzędnego, np. "/3/"
+    const basePath = swPath.substring(0, swPath.lastIndexOf('/') + 1);
+    // <<< KONIEC KLUCZOWEJ POPRAWKI >>>
 
     switch (event.action) {
         case 'answer':
             console.log('[Service Worker] Akcja: Odbierz. Otwieram ekran połączenia...');
             
-            // <<< KLUCZOWA POPRAWKA: Usunięto ukośnik na początku ścieżki >>>
-            const callUrl = `call.html?caller=${data.caller}`;
+            // Budujemy pełny, poprawny URL używając ścieżki bazowej
+            const callUrl = `${basePath}call.html?caller=${data.caller}`;
+            console.log(`[Service Worker] Otwieram URL: ${callUrl}`);
             
             event.waitUntil(clients.openWindow(callUrl));
             break;
@@ -53,10 +61,10 @@ self.addEventListener('notificationclick', event => {
 
         default:
             console.log('[Service Worker] Domyślne kliknięcie.');
+            // Ta logika pozostaje bez zmian, ponieważ URL przychodzący od serwera
+            // dla wiadomości tekstowych powinien być już poprawny.
             if (data.url) {
-                // Tutaj również usuwamy ukośnik, jeśli istnieje, dla spójności
-                const targetUrl = data.url.startsWith('/') ? data.url.substring(1) : data.url;
-                event.waitUntil(clients.openWindow(targetUrl));
+                event.waitUntil(clients.openWindow(data.url));
             }
             break;
     }
