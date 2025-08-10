@@ -31,7 +31,11 @@
 </head>
 <body>
 
-    <!-- POPRAWKA 1: Dodano klasę 'active', aby ten widok był domyślnie widoczny -->
+    <!--
+      KLUCZOWA POPRAWKA:
+      Dodana klasa "active" sprawia, że ten widok jest widoczny OD RAZU po załadowaniu strony.
+      To rozwiązuje problem pustego ekranu.
+    -->
     <div id="contacts-view" class="view active">
         <header>
             <a href="https://0-skar.github.io/3/">Przejdź do Forum</a>
@@ -42,6 +46,7 @@
         <div id="status">Łączenie...</div>
     </div>
 
+    <!-- Ten widok pozostaje domyślnie ukryty i jest pokazywany tylko przy połączeniu przychodzącym. -->
     <div id="incoming-call-view" class="view">
         <div class="caller-info" id="caller-name">Dzwoni...</div>
         <div class="buttons">
@@ -63,19 +68,21 @@
         const urlParams = new URLSearchParams(window.location.search);
         const caller = urlParams.get('caller');
 
-        // POPRAWKA 2: Uproszczona logika startowa
+        // Uproszczona logika startowa: strona domyślnie pokazuje kontakty.
+        // Skrypt sprawdza tylko, czy nie ma połączenia przychodzącego.
         if (caller) {
-            // Jeśli jest połączenie przychodzące, przełącz widoki
+            // Jest połączenie przychodzące - przełącz widok.
             document.title = `Dzwoni: ${caller}`;
             showIncomingCallView(caller);
         } else {
-            // W przeciwnym razie (domyślnie) po prostu połącz się, aby pobrać kontakty
+            // Domyślny stan - połącz się, aby pobrać kontakty.
+            // Widok jest już widoczny dzięki klasie "active" w HTML.
             document.title = 'Kontakty';
             connectForContacts();
         }
 
         function showIncomingCallView(callerName) {
-            // Ukryj widok kontaktów i pokaż widok połączenia
+            // Ukryj widok kontaktów i pokaż widok połączenia.
             contactsView.classList.remove('active');
             incomingCallView.classList.add('active');
             
@@ -85,7 +92,8 @@
             callerNameDiv.textContent = `Dzwoni: ${callerName}`;
             const ringtone = new Audio('ringtone.mp3');
             ringtone.loop = true;
-            ringtone.play().catch(e => console.warn("Interakcja wymagana do odtworzenia dźwięku.", e));
+            ringtone.play().catch(e => console.warn("Interakcja użytkownika jest wymagana do odtworzenia dźwięku.", e));
+            
             answerBtn.onclick = () => {
                 ringtone.pause();
                 connectAndAnswer(callerName);
@@ -95,6 +103,7 @@
                 window.close();
             };
         }
+
         function connectAndAnswer(callerName) {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => {
@@ -104,6 +113,7 @@
                     socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
                 } else {
                     alert("Błąd logowania. Zaloguj się na forum i poproś o ponowne połączenie.");
+                    window.close();
                 }
             };
             socket.onmessage = (event) => {
@@ -116,7 +126,7 @@
                 }
             };
         }
-
+        
         function connectForContacts() {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => {
@@ -131,15 +141,22 @@
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'join_success') {
-                    statusDiv.style.display = 'none';
+                    statusDiv.style.display = 'none'; // Ukryj status "Łączenie..."
                 } else if (data.type === 'user_update') {
                     renderContacts(data.payload.users);
                 }
             };
             socket.onclose = () => {
                 statusDiv.textContent = 'Rozłączono. Spróbuj odświeżyć stronę.';
+                statusDiv.style.display = 'block';
+            };
+            socket.onerror = (err) => {
+                statusDiv.textContent = 'Błąd połączenia z serwerem.';
+                statusDiv.style.display = 'block';
+                console.error("Błąd WebSocket:", err);
             };
         }
+
         function renderContacts(allUsers) {
             const me = allUsers.find(u => u.username === myUsername);
             if (!me || !me.relationships) {
@@ -148,42 +165,62 @@
                 statusDiv.style.display = 'block';
                 return;
             }
-            contactList.innerHTML = '';
+            
+            contactList.innerHTML = ''; // Zawsze czyść listę przed ponownym renderowaniem
             const favoriteUsernames = Object.keys(me.relationships).filter(user => me.relationships[user] === 'favorite');
+            
             if (favoriteUsernames.length === 0) {
                  statusDiv.textContent = 'Brak ulubionych kontaktów. Dodaj je na forum.';
                  statusDiv.style.display = 'block';
                  return;
             }
+
             favoriteUsernames.forEach(username => {
                 const user = allUsers.find(u => u.username === username);
                 const li = document.createElement('li');
                 li.className = 'contact-item';
+                
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'contact-name';
                 nameSpan.textContent = username;
-                if (user && user.status === 'inactive') nameSpan.classList.add('offline');
+                if (user && user.status === 'inactive') {
+                    nameSpan.classList.add('offline');
+                }
+                
                 const callButton = document.createElement('button');
                 callButton.className = 'call-btn';
                 callButton.textContent = '📞';
+                callButton.title = `Zadzwoń do ${username}`;
                 callButton.onclick = () => {
-                    socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
-                    alert(`Dzwonienie do ${username}...`);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
+                        alert(`Dzwonienie do ${username}...`);
+                    } else {
+                        alert("Brak połączenia z serwerem. Odśwież stronę.");
+                    }
                 };
+
                 const removeButton = document.createElement('button');
                 removeButton.className = 'remove-btn';
                 removeButton.textContent = '✖';
+                removeButton.title = `Usuń ${username} z ulubionych`;
                 removeButton.onclick = () => {
                     if (confirm(`Czy na pewno chcesz usunąć ${username} z ulubionych?`)) {
-                        socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: username, status: 'neutral' } }));
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: username, status: 'neutral' } }));
+                        } else {
+                            alert("Brak połączenia z serwerem. Odśwież stronę.");
+                        }
                     }
                 };
+                
                 li.appendChild(nameSpan);
                 li.appendChild(callButton);
                 li.appendChild(removeButton);
                 contactList.appendChild(li);
             });
         }
+
         async function initializeWebRTC(callerName) {
             try {
                 const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -193,6 +230,7 @@
                 alert("Nie można uzyskać dostępu do mikrofonu.");
             }
         }
+
         function createPeerConnection(targetUser) {
             const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate });
@@ -203,17 +241,23 @@
                 document.body.appendChild(audio);
             };
             pc.onconnectionstatechange = () => {
-                if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) window.close();
+                if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) {
+                    window.close();
+                }
             };
             return pc;
         }
+
         function sendSignal(recipient, signal) {
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
             }
         }
+
         async function handleWebRTCSignal(sender, signal) {
-            if (!peerConnection) peerConnection = createPeerConnection(sender);
+            if (!peerConnection) {
+                peerConnection = createPeerConnection(sender);
+            }
             try {
                 if (signal.type === 'offer') {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }));
