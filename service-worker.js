@@ -1,4 +1,6 @@
-// Plik: service-worker.js - Wersja ostateczna, świadoma podfolderu
+--- START OF FILE service-worker.js ---
+
+// Plik: service-worker.js - Wersja ostateczna, z ujednoliconą obsługą kliknięć
 
 self.addEventListener('push', event => {
     console.log('[Service Worker] Otrzymano powiadomienie push.');
@@ -31,39 +33,33 @@ self.addEventListener('push', event => {
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
+
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     const data = event.notification.data;
 
-    // <<< POCZĄTEK KLUCZOWEJ POPRAWKI: Inteligentne budowanie ścieżki >>>
-    // Pobieramy pełną ścieżkę do samego pliku service-workera, np. "/3/service-worker.js"
-    const swPath = self.location.pathname; 
-    // Wycinamy z niej ścieżkę do folderu nadrzędnego, np. "/3/"
+    const swPath = self.location.pathname;
     const basePath = swPath.substring(0, swPath.lastIndexOf('/') + 1);
-    // <<< KONIEC KLUCZOWEJ POPRAWKI >>>
-
-    switch (event.action) {
-        case 'answer':
-            console.log('[Service Worker] Akcja: Odbierz. Otwieram ekran połączenia...');
-            
-            // Budujemy pełny, poprawny URL używając ścieżki bazowej
+    
+    // <<< POCZĄTEK KLUCZOWEJ POPRAWKI >>>
+    // Sprawdzamy, czy to jest powiadomienie o połączeniu
+    if (data.type === 'incoming_call') {
+        // Jeśli tak, to niezależnie od tego, czy kliknięto 'Odbierz' czy samą notyfikację,
+        // wykonujemy akcję odbierania (chyba że kliknięto 'Odrzuć').
+        if (event.action !== 'decline') {
+            console.log('[Service Worker] Akcja Odbierz (z przycisku lub treści). Otwieram ekran połączenia...');
             const callUrl = `${basePath}call.html?caller=${data.caller}`;
-            console.log(`[Service Worker] Otwieram URL: ${callUrl}`);
-            
             event.waitUntil(clients.openWindow(callUrl));
-            break;
-
-        case 'decline':
+        } else {
             console.log('[Service Worker] Akcja: Odrzuć.');
-            break;
-
-        default:
-            console.log('[Service Worker] Domyślne kliknięcie.');
-            // Ta logika pozostaje bez zmian, ponieważ URL przychodzący od serwera
-            // dla wiadomości tekstowych powinien być już poprawny.
-            if (data.url) {
-                event.waitUntil(clients.openWindow(data.url));
-            }
-            break;
+            // Nic nie rób
+        }
+    } else {
+        // Jeśli to inne powiadomienie (np. o wiadomości tekstowej)
+        console.log('[Service Worker] Domyślne kliknięcie dla wiadomości.');
+        if (data.url) {
+            event.waitUntil(clients.openWindow(data.url));
+        }
     }
+    // <<< KONIEC KLUCZOWEJ POPRAWKI >>>
 });
