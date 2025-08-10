@@ -1,18 +1,22 @@
+--- START OF FILE call.html ---
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kontakty</title>
+    <!-- Link do manifestu, aby umożliwić "instalację" tej strony -->
+    <link rel="manifest" href="/manifest.json">
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #23272a; color: white; }
-        .view { display: none; /* Wszystkie widoki domyślnie ukryte */ }
+        .view { display: none; }
         .view.active { display: flex; flex-direction: column; height: 100vh; }
         
-        /* Styl dla widoku listy kontaktów */
         #contacts-view header { background-color: #1e2124; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         #contacts-view header a { color: #99aab5; text-decoration: none; font-size: 0.9rem; }
+        #install-button { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; display: none; } /* Ukryty domyślnie */
         .contact-list { list-style-type: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #444; }
         .contact-name { flex-grow: 1; font-size: 1.1rem; }
@@ -22,7 +26,6 @@
         .remove-btn { color: #dc3545; }
         #status { text-align: center; padding: 20px; color: #99aab5; }
 
-        /* Styl dla widoku połączenia przychodzącego */
         #incoming-call-view { justify-content: center; align-items: center; text-align: center; }
         .caller-info { font-size: 2rem; font-weight: bold; }
         .buttons { display: flex; gap: 30px; margin-top: 40px; }
@@ -33,17 +36,16 @@
 </head>
 <body>
 
-    <!-- Widok 1: Lista Kontaktów (domyślny) -->
     <div id="contacts-view" class="view">
         <header>
-            <span>Ulubione Kontakty</span>
-            <a href="/index.html">Przejdź do Forum</a>
+            <a href="https://0-skar.github.io/3/">Przejdź do Forum</a>
+            <span>Kontakty</span>
+            <button id="install-button" title="Dodaj na pulpit">📌</button>
         </header>
         <ul class="contact-list" id="contact-list"></ul>
         <div id="status">Łączenie...</div>
     </div>
 
-    <!-- Widok 2: Połączenie Przychodzące (aktywny po kliknięciu powiadomienia) -->
     <div id="incoming-call-view" class="view">
         <div class="caller-info" id="caller-name">Dzwoni...</div>
         <div class="buttons">
@@ -59,50 +61,38 @@
         let myUsername;
         let peerConnection;
         
-        // Główne elementy DOM
         const contactsView = document.getElementById('contacts-view');
         const incomingCallView = document.getElementById('incoming-call-view');
         const contactList = document.getElementById('contact-list');
         const statusDiv = document.getElementById('status');
         
-        // Sprawdź parametry URL, aby zdecydować, który widok pokazać
         const urlParams = new URLSearchParams(window.location.search);
         const caller = urlParams.get('caller');
 
         if (caller) {
-            // Mamy połączenie przychodzące
             document.title = `Dzwoni: ${caller}`;
             showIncomingCallView(caller);
         } else {
-            // Pokazujemy domyślną listę kontaktów
             document.title = 'Kontakty';
             showContactsView();
         }
 
-        // --- Logika dla Widoku Połączenia Przychodzącego ---
         function showIncomingCallView(callerName) {
             contactsView.classList.remove('active');
             incomingCallView.classList.add('active');
-
             const callerNameDiv = document.getElementById('caller-name');
             const answerBtn = document.getElementById('answer-btn');
             const declineBtn = document.getElementById('decline-btn');
-            
             callerNameDiv.textContent = `Dzwoni: ${callerName}`;
-            
             const ringtone = new Audio('ringtone.mp3');
             ringtone.loop = true;
             ringtone.play().catch(e => console.warn("Interakcja wymagana do odtworzenia dźwięku.", e));
-
             answerBtn.onclick = () => {
                 ringtone.pause();
                 connectAndAnswer(callerName);
             };
-
             declineBtn.onclick = () => {
                 ringtone.pause();
-                // Ta logika jest trudniejsza, bo wymagałaby połączenia tylko po to by odrzucić.
-                // Na razie po prostu zamykamy okno.
                 window.close();
             };
         }
@@ -129,7 +119,6 @@
             };
         }
 
-        // --- Logika dla Widoku Listy Kontaktów ---
         function showContactsView() {
             incomingCallView.classList.remove('active');
             contactsView.classList.add('active');
@@ -205,7 +194,6 @@
             });
         }
 
-        // --- Wspólna logika WebRTC ---
         async function initializeWebRTC(callerName) {
             try {
                 const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -249,6 +237,23 @@
                 console.error(`Błąd obsługi sygnału WebRTC:`, err);
             }
         }
+
+        // --- Skrypt do obsługi przycisku "Przypnij do pulpitu" ---
+        let deferredPrompt;
+        const installButton = document.getElementById('install-button');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'block';
+        });
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                installButton.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
