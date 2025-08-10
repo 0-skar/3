@@ -1,3 +1,5 @@
+--- START OF FILE index.html ---
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -81,48 +83,12 @@
         .form-inline button, .action-menu button { width: 100%; padding: 8px; background: var(--accent-color); border: none; color: white; border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-top: 5px; }
         .action-menu button.delete-btn { background-color: var(--danger-color); }
 
-        #home-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted-color);
-            text-decoration: none;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            transition: background-color 0.2s, color 0.2s;
-            flex-shrink: 0;
-        }
-        #home-link:hover {
-            background-color: var(--hover-color);
-            color: var(--text-color);
-        }
-        #home-link svg {
-            width: 22px;
-            height: 22px;
-        }
-
-        /* <<< POCZĄTEK ZMIENIONYCH STYLÓW DLA POŁĄCZEŃ >>> */
-        #call-btn {
-            display: none; /* Ukryty domyślnie */
-            background: none;
-            border: none;
-            color: var(--voice-active-color); /* Zielony kolor domyślny */
-            padding: 5px;
-            cursor: pointer;
-            font-size: 1.5rem;
-            border-radius: 5px;
-            line-height: 1;
-            transition: color 0.2s;
-            margin-left: auto; /* Wypycha przycisk na prawo w kontenerze flex */
-        }
-        #call-btn:hover {
-            filter: brightness(1.2);
-        }
-        #call-btn.calling {
-            color: var(--danger-color); /* Czerwony kolor podczas połączenia */
-        }
-        /* <<< KONIEC ZMIENIONYCH STYLÓW DLA POŁĄCZEŃ >>> */
+        #home-link { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted-color); text-decoration: none; border-radius: 50%; width: 34px; height: 34px; transition: background-color 0.2s, color 0.2s; flex-shrink: 0; }
+        #home-link:hover { background-color: var(--hover-color); color: var(--text-color); }
+        #home-link svg { width: 22px; height: 22px; }
+        #call-btn { display: none; background: none; border: none; color: var(--voice-active-color); padding: 5px; cursor: pointer; font-size: 1.5rem; border-radius: 5px; line-height: 1; transition: color 0.2s; margin-left: auto; }
+        #call-btn:hover { filter: brightness(1.2); }
+        #call-btn.calling { color: var(--danger-color); }
     </style>
 </head>
 <body>
@@ -141,23 +107,18 @@
                         <button id="sidebar-toggle"><</button>
                     </div>
                 </div>
-                <!-- <<< POCZĄTEK ZMIANY W HTML (PRZENIESIENIE PRZYCISKU POŁĄCZENIA) >>> -->
                 <div class="private-chat-tabs" id="private-chat-tabs">
-                    <!-- Zakładki prywatne będą dodawane przez JS przed tym przyciskiem -->
                     <button id="call-btn" title="Zadzwoń">📞</button>
                 </div>
-                <!-- <<< KONIEC ZMIANY W HTML >>> -->
                 <div class="chat-windows" id="chat-windows"></div>
             </div>
             <div class="sidebar" id="sidebar">
                 <div class="chat-tabs" id="chat-tabs"></div>
                 <div class="user-slots-area">
-                    <!-- <<< POCZĄTEK ZMIANY W HTML (POWRÓT KOSZA NA MIEJSCE) >>> -->
                     <div class="sidebar-heading">
                         <h3>Użytkownicy</h3>
-                        <button id="clear-history-btn" title="Wyczyść historię"></button>
+                        <button id="clear-history-btn" title="Wyczyść historię">🗑️</button>
                     </div>
-                    <!-- <<< KONIEC ZMIANY W HTML >>> -->
                     <div id="user-slots-container"></div>
                     <div id="new-user-slot"></div>
                 </div>
@@ -205,191 +166,75 @@
         async function updateAllVoiceConnections() { if (!isVoiceActive || !localStream || !sessionUsername) { Object.keys(peerConnections).forEach(cleanupVoiceChat); return; } const currentActiveUsers = allUsers.filter(u => u.status === 'active' && u.username !== sessionUsername).map(u => u.username); let targets = []; if (activeChat === 'public') { targets = currentActiveUsers; } else if (currentActiveUsers.includes(activeChat)) { targets = [activeChat]; } Object.keys(peerConnections).forEach(peer => { if (!targets.includes(peer)) { cleanupVoiceChat(peer); } }); for (const target of targets) { if (!peerConnections[target]) { const pc = createPeerConnection(target); try { const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal(target, { type: 'offer', sdp: offer.sdp }); } catch (e) { console.error(`Błąd tworzenia oferty dla ${target}:`, e); } } } }
         function sendSignal(recipient, signal) { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
         function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = event => { let audio = document.getElementById(`audio-${targetUser}`); if (!audio) { audio = document.createElement('audio'); audio.id = `audio-${targetUser}`; audio.autoplay = true; audio.playsInline = true; audioContainer.appendChild(audio); } audio.srcObject = event.streams[0]; audio.muted = !isVoiceActive; }; pc.onconnectionstatechange = () => (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') && cleanupVoiceChat(targetUser); if (localStream) { localStream.getTracks().forEach(track => pc.addTrack(track, localStream)); } peerConnections[targetUser] = pc; return pc; }
-        
-        // <<< POCZĄTEK ZMODYFIKOWANEJ FUNKCJI KOŃCZENIA ROZMOWY >>>
-        function cleanupVoiceChat(targetUser) {
-            if (peerConnections[targetUser]) {
-                peerConnections[targetUser].close();
-                delete peerConnections[targetUser];
-            }
-            const audio = document.getElementById(`audio-${targetUser}`);
-            if (audio) audio.remove();
-
-            // Jeśli kończymy rozmowę z aktywnym partnerem, zresetuj przycisk
-            if (targetUser === activeChat) {
-                ui.callBtn.classList.remove('calling');
-                ui.callBtn.title = "Zadzwoń";
-            }
-        }
-        // <<< KONIEC ZMODYFIKOWANEJ FUNKCJI KOŃCZENIA ROZMOWY >>>
-
+        function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); if (targetUser === activeChat) { ui.callBtn.classList.remove('calling'); ui.callBtn.title = "Zadzwoń"; } }
         async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); addMessage({username:'System', message:`${sender} zakończył(a) rozmowę.`}, sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
         async function toggleVoice() { if (isRecording) { recognition.stop(); } if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); } catch (err) { alert("Nie udało się uzyskać dostępu do mikrofonu."); return; } } isVoiceActive = !isVoiceActive; if (isVoiceActive) { audioContainer.querySelectorAll('audio').forEach(audio => audio.play().catch(e => console.warn("Interakcja potrzebna do audio."))); } localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive); setAllIncomingAudio(isVoiceActive); updateAllVoiceConnections(); const voiceBtn = document.getElementById('self-voice-toggle-btn'); if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); } }
 
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
-            const messagesDiv = document.createElement('ul');
-            messagesDiv.className = 'messages';
-            messagesDiv.id = `messages-${id}`;
-            messagesDiv.style.display = 'none';
-            ui.chatWindows.appendChild(messagesDiv);
-            const tabButton = document.createElement('button');
-            tabButton.className = 'tab-button';
-            tabButton.onclick = () => switchChat(id);
+            const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; messagesDiv.style.display = 'none'; ui.chatWindows.appendChild(messagesDiv);
+            const tabButton = document.createElement('button'); tabButton.className = 'tab-button'; tabButton.onclick = () => switchChat(id);
             if (id === 'public') {
-                tabButton.id = 'tab-public';
-                tabButton.innerHTML = `<span class="tab-text">${name}</span>`;
-                ui.publicChatTabs.appendChild(tabButton);
+                tabButton.id = 'tab-public'; tabButton.innerHTML = `<span class="tab-text">${name}</span>`; ui.publicChatTabs.appendChild(tabButton);
             } else {
                 tabButton.id = `tab-private-${id}`;
-                const relationshipIcon = document.createElement('span');
-                relationshipIcon.className = 'relationship-icon';
-                relationshipIcon.dataset.partner = id;
-                relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); };
-                const tabText = document.createElement('span');
-                tabText.className = 'tab-text';
-                tabText.textContent = name;
-                const closeBtn = document.createElement('span');
-                closeBtn.className = 'close-tab-btn';
-                closeBtn.innerHTML = '×';
-                closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); };
-                tabButton.appendChild(relationshipIcon);
-                tabButton.appendChild(tabText);
-                tabButton.appendChild(closeBtn);
-                // Wstawiamy nową zakładkę PRZED przyciskiem dzwonienia
+                const relationshipIcon = document.createElement('span'); relationshipIcon.className = 'relationship-icon'; relationshipIcon.dataset.partner = id; relationshipIcon.onclick = (e) => { e.stopPropagation(); toggleRelationship(id); };
+                const tabText = document.createElement('span'); tabText.className = 'tab-text'; tabText.textContent = name;
+                const closeBtn = document.createElement('span'); closeBtn.className = 'close-tab-btn'; closeBtn.innerHTML = '×'; closeBtn.onclick = (e) => { e.stopPropagation(); closePrivateChat(id); };
+                tabButton.appendChild(relationshipIcon); tabButton.appendChild(tabText); tabButton.appendChild(closeBtn);
                 ui.privateChatTabs.insertBefore(tabButton, ui.callBtn);
                 updateRelationshipIcon(id);
             }
         }
         
         function toggleRelationship(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (!currentUserData) return; if (!currentUserData.relationships) { currentUserData.relationships = {}; } const currentStatus = currentUserData.relationships[partner] || 'neutral'; let nextStatus = 'neutral'; if (currentStatus === 'neutral') nextStatus = 'favorite'; else if (currentStatus === 'favorite') nextStatus = 'blocked'; else if (currentStatus === 'blocked') nextStatus = 'neutral'; currentUserData.relationships[partner] = nextStatus; updateRelationshipIcon(partner); if (nextStatus === 'favorite') { subscribeUserForPush(); } if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } })); } }
+        function updateRelationshipIcon(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`); if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return; const status = currentUserData.relationships[partner] || 'neutral'; icon.classList.remove('favorite', 'blocked'); if (status === 'favorite') { icon.innerHTML = BELL_SVG; icon.classList.add('favorite'); icon.title = 'Powiadomienia włączone (Ulubiony)'; } else if (status === 'blocked') { icon.innerHTML = THUMB_DOWN_SVG; icon.classList.add('blocked'); icon.title = 'Zablokowany'; } else { icon.innerHTML = THUMB_UP_SVG; icon.title = 'Oznacz jako ulubionego (włącz powiadomienia)'; } }
+        function updateCallButtonVisibility() { ui.callBtn.classList.remove('calling'); ui.callBtn.title = "Zadzwoń"; if (activeChat === 'public' || !sessionUsername) { ui.callBtn.style.display = 'none'; return; } const currentUser = allUsers.find(u => u.username === sessionUsername); const partnerUser = allUsers.find(u => u.username === activeChat); if (currentUser && partnerUser && currentUser.relationships && partnerUser.relationships) { const iLikePartner = currentUser.relationships[activeChat] === 'favorite'; const partnerLikesMe = partnerUser.relationships[sessionUsername] === 'favorite'; if (iLikePartner && partnerLikesMe) { ui.callBtn.style.display = 'block'; } else { ui.callBtn.style.display = 'none'; } } else { ui.callBtn.style.display = 'none'; } }
+        function updateClearHistoryButtonState() { const currentUserData = allUsers.find(u => u.username === sessionUsername); const isPermanentUser = currentUserData && currentUserData.role !== 'user'; if (!sessionUsername || !currentUserData) { ui.clearHistoryBtn.style.display = 'none'; return; } if (activeChat === 'public') { ui.clearHistoryBtn.title = 'Wyczyść cały czat publiczny'; if (isModerator) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; } } else { ui.clearHistoryBtn.title = `Wyczyść historię rozmowy z ${activeChat}`; if (isPermanentUser) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; } } }
+        function switchChat(id) { activeChat = id; if (id === 'public') { ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; } else { ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); } ui.headerTitle.style.color = 'var(--private-msg-color)'; document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); const chatWindow = document.getElementById(`messages-${id}`); if (chatWindow) chatWindow.style.display = 'block'; document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } updateAllVoiceConnections(); updateClearHistoryButtonState(); updateCallButtonVisibility(); }
+        function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
+        function renderUsers(users) { const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); updateCallButtonVisibility(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); localStorage.removeItem('forumPassword'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); updateClearHistoryButtonState(); }
+        function resetSession() { if (isVoiceActive) toggleVoice(); Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; renderUsers(allUsers); switchChat('public'); }
         
-        function updateRelationshipIcon(partner) {
-            const currentUserData = allUsers.find(u => u.username === sessionUsername);
-            const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`);
-            if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return;
-            const status = currentUserData.relationships[partner] || 'neutral';
-            icon.classList.remove('favorite', 'blocked');
-            if (status === 'favorite') {
-                icon.innerHTML = BELL_SVG;
-                icon.classList.add('favorite');
-                icon.title = 'Powiadomienia włączone (Ulubiony)';
-            } else if (status === 'blocked') {
-                icon.innerHTML = THUMB_DOWN_SVG;
-                icon.classList.add('blocked');
-                icon.title = 'Zablokowany';
-            } else {
-                icon.innerHTML = THUMB_UP_SVG;
-                icon.title = 'Oznacz jako ulubionego (włącz powiadomienia)';
-            }
-        }
-        
-        function updateCallButtonVisibility() {
-            // Zawsze resetuj stan przycisku przy zmianie widoczności
-            ui.callBtn.classList.remove('calling');
-            ui.callBtn.title = "Zadzwoń";
+        // <<< POCZĄTEK NOWEJ LOGIKI AUTOMATYCZNEGO LOGOWANIA >>>
+        function handleAutoLoginOnStartup() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'answer_call') {
+                const storedUser = localStorage.getItem('forumUsername');
+                const storedPass = localStorage.getItem('forumPassword');
 
-            if (activeChat === 'public' || !sessionUsername) {
-                ui.callBtn.style.display = 'none';
-                return;
-            }
-            const currentUser = allUsers.find(u => u.username === sessionUsername);
-            const partnerUser = allUsers.find(u => u.username === activeChat);
-
-            if (currentUser && partnerUser && currentUser.relationships && partnerUser.relationships) {
-                const iLikePartner = currentUser.relationships[activeChat] === 'favorite';
-                const partnerLikesMe = partnerUser.relationships[sessionUsername] === 'favorite';
-                if (iLikePartner && partnerLikesMe) {
-                    ui.callBtn.style.display = 'block';
+                if (storedUser && storedPass !== null) { // Sprawdzamy czy hasło istnieje (nawet jako pusty string)
+                    console.log(`Próba automatycznego zalogowania jako ${storedUser}...`);
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: storedUser, password: storedPass } }));
                 } else {
-                    ui.callBtn.style.display = 'none';
+                    alert("Nie znaleziono zapisanych danych logowania. Zaloguj się ręcznie i poproś o ponowne połączenie.");
                 }
             } else {
-                ui.callBtn.style.display = 'none';
+                loadHistory();
             }
         }
-        
-        function updateClearHistoryButtonState() {
-            const currentUserData = allUsers.find(u => u.username === sessionUsername);
-            const isPermanentUser = currentUserData && currentUserData.role !== 'user';
-            if (!sessionUsername || !currentUserData) { ui.clearHistoryBtn.style.display = 'none'; return; }
-            if (activeChat === 'public') {
-                ui.clearHistoryBtn.title = 'Wyczyść cały czat publiczny';
-                if (isModerator) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; }
-            } else {
-                ui.clearHistoryBtn.title = `Wyczyść historię rozmowy z ${activeChat}`;
-                if (isPermanentUser) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; }
-            }
-        }
-
-        function switchChat(id) { 
-            activeChat = id; 
-            if (id === 'public') { 
-                ui.headerTitle.textContent = 'Forum'; ui.privateChatTabs.style.display = 'none'; ui.privateChatIndicator.style.display = 'none'; 
-            } else { 
-                ui.headerTitle.textContent = sessionUsername; ui.privateChatTabs.style.display = 'flex'; lastPrivateChatPartner = id; ui.privateChatIndicator.textContent = id; ui.privateChatIndicator.style.display = 'inline-block'; ui.privateChatIndicator.classList.remove('has-unread'); 
-            } 
-            ui.headerTitle.style.color = 'var(--private-msg-color)'; 
-            document.querySelectorAll('.messages').forEach(el => el.style.display = 'none'); 
-            const chatWindow = document.getElementById(`messages-${id}`); 
-            if (chatWindow) chatWindow.style.display = 'block'; 
-            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active')); 
-            const tab = document.getElementById(id === 'public' ? 'tab-public' : `tab-private-${id}`); 
-            if(tab) { tab.classList.add('active'); tab.classList.remove('has-unread'); } 
-            updateAllVoiceConnections();
-            updateClearHistoryButtonState();
-            updateCallButtonVisibility();
-        }
-
-        function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
-        
-        function renderUsers(users) { 
-            const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); 
-            allUsers = users; 
-            const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); 
-            if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); updateCallButtonVisibility(); }
-            const currentUserData = allUsers.find(u => u.username === sessionUsername); 
-            const isActive = currentUserData && currentUserData.status === 'active'; 
-            isModerator = isActive && currentUserData.role === 'moderator'; 
-            ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; 
-            if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); storedUsername = null; } 
-            if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } 
-            ui.userSlotsContainer.innerHTML = ''; 
-            const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; 
-            users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); 
-            updateClearHistoryButtonState();
-        }
-        
-        function resetSession() { if (isVoiceActive) toggleVoice(); Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; renderUsers(allUsers); switchChat('public'); }
+        // <<< KONIEC NOWEJ LOGIKI AUTOMATYCZNEGO LOGOWANIA >>>
         
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
             socket.onopen = () => {
                 console.log('Połączono z WebSocket.');
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('action') === 'answer_call') {
-                    if (storedUsername) { showLoginForm(document.body, storedUsername, false); const loginForm = document.querySelector('.form-inline'); if(loginForm) loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); } else { alert("Musisz być zalogowany, aby odebrać rozmowę. Zaloguj się, a następnie poproś o ponowne połączenie."); }
-                } else { loadHistory(); }
+                handleAutoLoginOnStartup(); // Używamy nowej, czystej funkcji
             };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 switch(data.type) {
                     case 'user_update': renderUsers(data.payload.users); break;
                     case 'chat_message': if (data.payload.username !== sessionUsername) addMessage(data.payload, 'public'); break;
-                    case 'private_message':
-                        if (data.payload.sender === sessionUsername) break;
-                        const sender = data.payload.sender; const chatPartner = sender;
-                        if (!document.getElementById(`messages-${chatPartner}`)) { createChatWindow(chatPartner, `Priv: ${chatPartner}`); }
-                        addMessage(data.payload, chatPartner);
-                        if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); }
-                        lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block';
-                        break;
+                    case 'private_message': if (data.payload.sender === sessionUsername) break; const sender = data.payload.sender; const chatPartner = sender; if (!document.getElementById(`messages-${chatPartner}`)) { createChatWindow(chatPartner, `Priv: ${chatPartner}`); } addMessage(data.payload, chatPartner); if (activeChat !== chatPartner) { ui.privateChatIndicator.classList.add('has-unread'); const tab = document.getElementById(`tab-private-${chatPartner}`); if(tab) tab.classList.add('has-unread'); } lastPrivateChatPartner = chatPartner; ui.privateChatIndicator.textContent = chatPartner; ui.privateChatIndicator.style.display = 'inline-block'; break;
                     case 'history_cleared': const publicChat = document.getElementById('messages-public'); if(publicChat) publicChat.innerHTML = ''; addMessage({username:'System', message:'Czat publiczny został wyczyszczony'}, 'public'); break;
                     case 'private_history_cleared': { const partner = data.payload.partner; const messagesDiv = document.getElementById(`messages-${partner}`); if (messagesDiv) { messagesDiv.innerHTML = ''; addMessage({username: 'System', message: 'Historia tej rozmowy została usunięta.'}, partner); } break; }
                     case 'private_history': const partner = data.payload.partner; const history = data.payload.history; const messagesDiv = document.getElementById(`messages-${partner}`); if (messagesDiv) { messagesDiv.innerHTML = ''; history.forEach(msg => addMessage(msg, partner)); } break;
                     case 'join_success':
                         sessionUsername = data.payload.username;
-                        if (!storedUsername || storedUsername !== sessionUsername) { storedUsername = sessionUsername; localStorage.setItem('forumUsername', storedUsername); }
+                        // Zapisujemy tylko nazwę, hasło jest zapisywane przy ręcznym logowaniu
+                        if (!storedUsername || storedUsername !== sessionUsername) { localStorage.setItem('forumUsername', sessionUsername); }
+                        storedUsername = sessionUsername; // Aktualizuj zmienną w sesji
                         removeActiveForms(); subscribeUserForPush();
                         const urlParams = new URLSearchParams(window.location.search);
                         if (urlParams.get('action') === 'answer_call' && urlParams.get('caller')) {
@@ -398,7 +243,7 @@
                             openPrivateChat(caller);
                             socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: caller } }));
                             if (!isVoiceActive) { toggleVoice(); }
-                        } else { loadHistory(); }
+                        } else { if(!document.getElementById('messages-public').hasChildNodes()) loadHistory(); }
                         break;
                     case 'join_failed': alert(`Logowanie nieudane: ${data.payload.reason}`); removeActiveForms(); renderUsers(allUsers); break;
                     case 'webrtc_signal': if (sessionUsername) handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
@@ -408,7 +253,7 @@
                     case 'recipient_busy': addMessage({username:'System', message:`${data.payload.recipient} jest niedostępny lub odrzucił połączenie.`}, activeChat); ui.callBtn.classList.remove('calling'); ui.callBtn.title = "Zadzwoń"; break;
                 }
             };
-            socket.onclose = (e) => { console.log(`Rozłączono z kodem ${e.code}. Próbuję połączyć ponownie...`); if (e.code === 4001) { localStorage.removeItem('forumUsername'); storedUsername = null; } resetSession(); setTimeout(connectWebSocket, 3000); };
+            socket.onclose = (e) => { console.log(`Rozłączono z kodem ${e.code}. Próbuję połączyć ponownie...`); if (e.code === 4001) { localStorage.removeItem('forumUsername'); localStorage.removeItem('forumPassword'); storedUsername = null; } resetSession(); setTimeout(connectWebSocket, 3000); };
             socket.onerror = (e) => { console.error("WebSocket error:", e); socket.close(); }
         }
 
@@ -418,31 +263,39 @@
         function removeActiveForms() { document.querySelectorAll('.form-inline, .action-menu').forEach(f => f.parentElement.removeChild(f)); document.querySelectorAll('.action-button.active-danger').forEach(btn => btn.classList.remove('active-danger')); }
         function showSelfActionMenu(slot, isPermanentAccount) { const menu = document.createElement('div'); menu.className = 'action-menu'; let menuHTML = ''; if (isPermanentAccount) { menuHTML += `<button class="logout-btn">Wyloguj</button>`; } menuHTML += `<button class="delete-btn">Usuń konto</button>`; menu.innerHTML = menuHTML; slot.appendChild(menu); const logoutBtn = menu.querySelector('.logout-btn'); if(logoutBtn) { logoutBtn.onclick = () => { socket.send(JSON.stringify({ type: 'leave' })); }; } menu.querySelector('.delete-btn').onclick = () => { if(confirm('Czy na pewno chcesz trwale usunąć swoje konto i wszystkie swoje prywatne rozmowy? Tej akcji nie można cofnąć.')) { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: sessionUsername } })); }}; }
         function showModeratorActionMenu(slot, targetUsername) { const menu = document.createElement('div'); menu.className = 'action-menu'; menu.innerHTML = `<button class="logout-btn">Wyloguj</button><button class="delete-btn">Usuń</button>`; slot.appendChild(menu); menu.querySelector('.logout-btn').onclick = () => { socket.send(JSON.stringify({ type: 'kick_user', payload: { username: targetUsername } })); removeActiveForms(); }; menu.querySelector('.delete-btn').onclick = () => { if(confirm(`Czy na pewno chcesz trwale usunąć konto ${targetUsername} i wszystkie jego prywatne rozmowy? Tej akcji nie można cofnąć.`)) { socket.send(JSON.stringify({ type: 'remove_user', payload: { username: targetUsername } })); removeActiveForms(); }}; }
-        function showLoginForm(slot, targetUsername, isNewUser = false) { removeActiveForms(); const form = document.createElement('form'); form.className = 'form-inline'; const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło"; form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : ''; form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`; form.onclick = (e) => e.stopPropagation(); const nameElement = slot.querySelector('.user-name'); if (nameElement) nameElement.style.cursor = 'default'; form.onsubmit = (e) => { e.preventDefault(); const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername; const pword = form.querySelector('[name="password"]').value.trim(); if (uname) { socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } })); removeActiveForms(); } }; slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus(); }
+        
+        function showLoginForm(slot, targetUsername, isNewUser = false) {
+            removeActiveForms();
+            const form = document.createElement('form'); form.className = 'form-inline';
+            const passwordPlaceholder = isNewUser ? "Wymyśl hasło (puste = gość)" : "Podaj hasło";
+            form.innerHTML = isNewUser ? `<input type="text" name="username" placeholder="Twoja nazwa..." required autocomplete="off">` : '';
+            form.innerHTML += `<input type="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="new-password"><button type="submit">${isNewUser ? 'Dołącz' : 'Zaloguj'}</button>`;
+            form.onclick = (e) => e.stopPropagation();
+            const nameElement = slot.querySelector('.user-name');
+            if (nameElement) nameElement.style.cursor = 'default';
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                const uname = isNewUser ? form.querySelector('[name="username"]').value.trim() : targetUsername;
+                const pword = form.querySelector('[name="password"]').value.trim();
+                if (uname) {
+                    // <<< POCZĄTEK NOWEJ LOGIKI: Zapisujemy hasło dla funkcji autologowania >>>
+                    localStorage.setItem('forumUsername', uname);
+                    localStorage.setItem('forumPassword', pword);
+                    // <<< KONIEC NOWEJ LOGIKI >>>
+                    socket.send(JSON.stringify({ type: 'join', payload: { username: uname, password: pword } }));
+                    removeActiveForms();
+                }
+            };
+            slot.appendChild(form);
+            form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus();
+        }
+
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
-        
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; let type, payload, messageData, targetChat; if (activeChat === 'public') { type = 'chat_message'; payload = { message }; messageData = { username: sessionUsername, message: message, timestamp: new Date().toISOString() }; targetChat = 'public'; } else { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (currentUserData.relationships && currentUserData.relationships[activeChat] === 'blocked') { alert('Nie możesz wysłać wiadomości. Odblokuj najpierw tego użytkownika.'); return; } type = 'private_message'; payload = { recipient: activeChat, message }; messageData = { sender: sessionUsername, message: message, timestamp: new Date().toISOString() }; targetChat = activeChat; } addMessage(messageData, targetChat); socket.send(JSON.stringify({ type, payload })); ui.input.value = ''; });
-        
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if (activeChat === 'public') { if(isModerator && confirm('Czy na pewno chcesz wyczyścić cały czat publiczny?')) { socket.send(JSON.stringify({ type: 'clear_history' })); } } else { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (currentUserData && currentUserData.role !== 'user') { if(confirm(`Czy na pewno chcesz trwale usunąć całą historię rozmowy z ${activeChat}? Tej akcji nie można cofnąć.`)) { socket.send(JSON.stringify({ type: 'delete_private_history', payload: { partner: activeChat } })); } } } });
         ui.privateChatIndicator.onclick = () => { if(lastPrivateChatPartner) { openPrivateChat(lastPrivateChatPartner); } };
-
-        // <<< POCZĄTEK NOWEJ, ZMODYFIKOWANEJ LOGIKI PRZYCISKU POŁĄCZENIA >>>
-        ui.callBtn.addEventListener('click', () => {
-            if (!sessionUsername || activeChat === 'public') return;
-            
-            // Jeśli przycisk jest czerwony (trwa rozmowa), zakończ ją
-            if (ui.callBtn.classList.contains('calling')) {
-                addMessage({username:'System', message:'Zakończyłeś/aś rozmowę.'}, activeChat);
-                cleanupVoiceChat(activeChat);
-                sendSignal(activeChat, { type: 'hangup' });
-            } else { // Jeśli przycisk jest zielony, zainicjuj połączenie
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: activeChat } }));
-                }
-            }
-        });
-        // <<< KONIEC NOWEJ, ZMODYFIKOWANEJ LOGIKI PRZYCISKU POŁĄCZENIA >>>
+        ui.callBtn.addEventListener('click', () => { if (!sessionUsername || activeChat === 'public') return; if (ui.callBtn.classList.contains('calling')) { addMessage({username:'System', message:'Zakończyłeś/aś rozmowę.'}, activeChat); cleanupVoiceChat(activeChat); sendSignal(activeChat, { type: 'hangup' }); } else { if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: activeChat } })); } } });
         
         registerServiceWorker();
         createChatWindow('public', 'Czat Publiczny');
