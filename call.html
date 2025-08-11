@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json?v=10"> <!-- Zwiększona wersja, aby na 100% odświeżyć cache -->
+    <link rel="manifest" href="manifest.json?v=13"> <!-- Zwiększona wersja, by na 100% odświeżyć cache -->
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
@@ -23,7 +23,7 @@
         }
         header a, header button { color: var(--grey); text-decoration: none; background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 5px; }
         #install-button {
-            display: block; opacity: 0.5; cursor: not-allowed;
+            display: block; opacity: 0.5; cursor: pointer;
         }
         #call-area {
             flex-grow: 1; display: flex; flex-direction: column;
@@ -87,7 +87,33 @@
         const ui = { installButton: document.getElementById('install-button'), forumLink: document.getElementById('forum-link'), closeButton: document.getElementById('close-button'), callerName: document.getElementById('caller-name'), callStatus: document.getElementById('call-status'), mainCallButton: document.getElementById('main-call-button'), toggleContactsBtn: document.getElementById('toggle-contacts-btn'), contactsPanel: document.getElementById('contacts-panel'), contactsHeader: document.getElementById('contacts-header'), contactsList: document.getElementById('contacts-list'), };
         document.addEventListener('DOMContentLoaded', initializeApp);
         function initializeApp() { setupEventListeners(); const urlParams = new URLSearchParams(window.location.search); const caller = urlParams.get('caller'); if (caller) { setState('INCOMING_CALL', { name: caller }); } connectForContacts(); }
-        function setupEventListeners() { let deferredPrompt; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; ui.installButton.style.opacity = '1'; ui.installButton.style.cursor = 'pointer'; }); ui.installButton.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt(); else alert("Aplikację można zainstalować tylko z przeglądarki, która to wspiera (np. Chrome, Edge). Być może jest już zainstalowana lub monit został odrzucony."); }); ui.closeButton.addEventListener('click', () => window.close()); ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.add('visible')); ui.contactsHeader.addEventListener('click', () => ui.contactsPanel.classList.remove('visible')); ui.mainCallButton.addEventListener('click', handleMainButtonClick); }
+        
+        function setupEventListeners() {
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                ui.installButton.style.opacity = '1';
+                ui.installButton.style.cursor = 'pointer';
+            });
+            
+            // ZMIANA: Logika kliknięcia pineski z adresem do skopiowania
+            ui.installButton.addEventListener('click', () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                } else {
+                    const instructions = "Aby zainstalować aplikację, skopiuj ten adres i otwórz go w przeglądarce Chrome lub Edge. Następnie poszukaj w menu opcji 'Zainstaluj aplikację'.";
+                    // Używamy prompt, aby ułatwić kopiowanie na telefonach
+                    prompt(instructions, window.location.href);
+                }
+            });
+
+            ui.closeButton.addEventListener('click', () => window.close());
+            ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.add('visible'));
+            ui.contactsHeader.addEventListener('click', () => ui.contactsPanel.classList.remove('visible'));
+            ui.mainCallButton.addEventListener('click', handleMainButtonClick);
+        }
+
         function setState(newState, data = {}) { callState = newState; currentCallPartner = data.name || null; const forumBaseUrl = "https://0-skar.github.io/3/"; if (currentCallPartner) { ui.forumLink.href = `${forumBaseUrl}?action=autologin&chat_with=${currentCallPartner}`; } else { ui.forumLink.href = `${forumBaseUrl}?action=autologin`; } updateUI(data); }
         function updateUI(data = {}) { const { name, status } = data; ui.mainCallButton.className = 'main-call-button'; switch (callState) { case 'INCOMING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwoni do Ciebie..."; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('calling-in'); break; case 'OUTGOING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwonienie..."; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('calling-out'); break; case 'IN_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Trwa rozmowa"; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('in-call'); break; default: ui.callerName.textContent = "Gotowy"; ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić"; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('idle'); break; } }
         function handleMainButtonClick() { switch (callState) { case 'INCOMING_CALL': if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); } else { connectForContacts(() => { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); }); } break; case 'OUTGOING_CALL': case 'IN_CALL': if (peerConnection) peerConnection.close(); if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } })); } setState('IDLE', { status: "Rozmowa zakończona" }); break; } }
