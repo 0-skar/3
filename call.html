@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json?v=16">
+    <link rel="manifest" href="manifest.json?v=18">
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
@@ -39,7 +39,7 @@
     <header>
         <a id="forum-link" href="https://0-skar.github.io/3/" title="Przejdź do forum">⌂</a>
         <button id="install-button" title="Zapisz na pulpicie">📌</button>
-        <button id="close-button" title="Resetuj/Zakończ">❌</button>
+        <button id="close-button" title="Zakończ / Idź do Forum">❌</button>
     </header>
     <main id="call-area">
         <div id="caller-info">
@@ -58,6 +58,8 @@
     <script>
         const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         let socket, myUsername, peerConnection, currentCallPartner; let callState = 'IDLE';
+        let ringtone = null;
+
         const ui = { installButton: document.getElementById('install-button'), forumLink: document.getElementById('forum-link'), closeButton: document.getElementById('close-button'), callerName: document.getElementById('caller-name'), callStatus: document.getElementById('call-status'), mainCallButton: document.getElementById('main-call-button'), toggleContactsBtn: document.getElementById('toggle-contacts-btn'), contactsPanel: document.getElementById('contacts-panel'), contactsHeader: document.getElementById('contacts-header'), contactsList: document.getElementById('contacts-list'), };
         
         document.addEventListener('DOMContentLoaded', initializeApp);
@@ -66,8 +68,12 @@
             setupEventListeners();
             const urlParams = new URLSearchParams(window.location.search);
             const caller = urlParams.get('caller');
-            connectForContacts(() => { // Połącz się i w callbacku obsłuż ewentualne połączenie
+            connectForContacts(() => { 
                 if (caller) {
+                    if (ringtone) ringtone.pause();
+                    ringtone = new Audio('ringtone.mp3');
+                    ringtone.loop = true;
+                    ringtone.play().catch(e => {});
                     setState('INCOMING_CALL', { name: caller });
                 }
             });
@@ -77,11 +83,20 @@
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; ui.installButton.style.display = 'block'; });
             ui.installButton.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt(); });
-            // NAPRAWA 1: Przycisk X resetuje stan, a nie zamyka okno
+
             ui.closeButton.addEventListener('click', () => {
-                if (peerConnection) peerConnection.close();
-                setState('IDLE', { status: "Gotowy do nowego połączenia" });
+                if (callState !== 'IDLE') {
+                    if (peerConnection) peerConnection.close();
+                    if (ringtone) ringtone.pause();
+                    if (socket?.readyState === WebSocket.OPEN && currentCallPartner) {
+                        socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } }));
+                    }
+                    setState('IDLE', { status: "Gotowy do nowego połączenia" });
+                } else {
+                    window.location.href = ui.forumLink.href; // Niezawodne przeniesienie na forum
+                }
             });
+
             ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.add('visible'));
             ui.contactsHeader.addEventListener('click', () => ui.contactsPanel.classList.remove('visible'));
             ui.mainCallButton.addEventListener('click', handleMainButtonClick);
@@ -91,12 +106,13 @@
         function updateUI(data = {}) { const { name, status } = data; ui.mainCallButton.className = 'main-call-button'; switch (callState) { case 'INCOMING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwoni do Ciebie..."; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('calling-in'); break; case 'OUTGOING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwonienie..."; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('calling-out'); break; case 'IN_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Trwa rozmowa"; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('in-call'); break; default: ui.callerName.textContent = "Gotowy"; ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić"; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('idle'); break; } }
         
         function handleMainButtonClick() {
+            if (ringtone) { ringtone.pause(); ringtone = null; }
             switch (callState) {
                 case 'INCOMING_CALL':
-                    if (socket?.readyState === WebSocket.OPEN) {
+                    connectForContacts(() => {
                         socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } }));
                         initializeWebRTC(currentCallPartner);
-                    }
+                    });
                     break;
                 case 'OUTGOING_CALL':
                 case 'IN_CALL':
@@ -119,6 +135,14 @@
                     case 'join_success': if (callback) callback(); break;
                     case 'user_update': renderContacts(data.payload.users); break;
                     case 'webrtc_signal': handleWebRTCSignal(data.payload.sender, data.payload.signal); break;
+                    case 'incoming_call_online':
+                        if (callState !== 'IDLE') return;
+                        if (ringtone) ringtone.pause();
+                        ringtone = new Audio('ringtone.mp3');
+                        ringtone.loop = true;
+                        ringtone.play().catch(e => {});
+                        setState('INCOMING_CALL', { name: data.payload.caller });
+                        break;
                     case 'call_answered': setState('IN_CALL', { name: data.payload.callee }); break;
                     case 'call_declined': case 'recipient_busy': setState('IDLE', { status: `${data.payload.recipient || data.payload.callee} jest niedostępny.` }); break;
                 }
@@ -126,29 +150,7 @@
             socket.onclose = () => updateUI({ status: "Rozłączono" });
         }
         
-        function renderContacts(allUsers) {
-            const me = allUsers.find(u => u.username === myUsername);
-            ui.contactsList.innerHTML = '';
-            if (!me || !me.relationships) return;
-            const favorites = Object.keys(me.relationships).filter(u => me.relationships[u] === 'favorite');
-            if (favorites.length === 0) { ui.contactsList.innerHTML = '<li class="contact-item" style="justify-content: center;">Brak ulubionych</li>'; return; }
-            favorites.forEach(username => {
-                const li = document.createElement('li');
-                li.className = 'contact-item';
-                li.innerHTML = `<span class="contact-name">${username}</span><button class="contact-call-btn" title="Zadzwoń do ${username}">📞</button>`;
-                // NAPRAWA 2: Upewniamy się, że połączenie jest inicjowane przez funkcję callback
-                li.querySelector('.contact-call-btn').onclick = () => {
-                    connectForContacts(() => { // Użyj callback, by mieć pewność, że socket jest gotowy
-                        ui.contactsPanel.classList.remove('visible');
-                        setState('OUTGOING_CALL', { name: username });
-                        socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
-                        initializeWebRTC(username);
-                    });
-                };
-                ui.contactsList.appendChild(li);
-            });
-        }
-        
+        function renderContacts(allUsers) { const me = allUsers.find(u => u.username === myUsername); ui.contactsList.innerHTML = ''; if (!me || !me.relationships) return; const favorites = Object.keys(me.relationships).filter(u => me.relationships[u] === 'favorite'); if (favorites.length === 0) { ui.contactsList.innerHTML = '<li class="contact-item" style="justify-content: center;">Brak ulubionych</li>'; return; } favorites.forEach(username => { const li = document.createElement('li'); li.className = 'contact-item'; li.innerHTML = `<span class="contact-name">${username}</span><button class="contact-call-btn" title="Zadzwoń do ${username}">📞</button>`; li.querySelector('.contact-call-btn').onclick = () => { connectForContacts(() => { ui.contactsPanel.classList.remove('visible'); setState('OUTGOING_CALL', { name: username }); socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } })); initializeWebRTC(username); }); }; ui.contactsList.appendChild(li); }); }
         async function initializeWebRTC(targetUser) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); peerConnection = createPeerConnection(targetUser); stream.getTracks().forEach(track => peerConnection.addTrack(track, stream)); if (callState === 'OUTGOING_CALL') { const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer); sendSignal(targetUser, { type: 'offer', sdp: offer.sdp }); } } catch (err) { setState('IDLE', { status: "Błąd mikrofonu" }); } }
         function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = e => { const audio = document.createElement('audio'); audio.srcObject = e.streams[0]; audio.autoplay = true; document.body.appendChild(audio); setState('IN_CALL', { name: targetUser }); }; pc.onconnectionstatechange = () => { if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) { if (callState !== 'IDLE') setState('IDLE', { status: "Połączenie zakończone." }); peerConnection = null; } }; return pc; }
         function sendSignal(recipient, signal) { if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
