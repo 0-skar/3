@@ -2,247 +2,140 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=17">
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #23272a; color: white; }
-        .view { display: none; }
-        .view.active { display: flex; flex-direction: column; height: 100vh; }
-        #contacts-view header { background-color: #1e2124; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        #contacts-view header a { color: #99aab5; text-decoration: none; font-size: 0.9rem; }
-        #install-button { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; display: none; }
-        .contact-list { list-style-type: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
-        .contact-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #444; }
-        .contact-name { flex-grow: 1; font-size: 1.1rem; }
-        .contact-name.offline { color: #99aab5; }
-        .call-btn, .remove-btn { background: none; border: none; cursor: pointer; font-size: 1.5rem; padding: 5px 10px; }
-        .call-btn { color: #43b581; }
-        .remove-btn { color: #dc3545; }
-        #status { text-align: center; padding: 20px; color: #99aab5; }
-        #incoming-call-view { justify-content: center; align-items: center; text-align: center; }
-        .caller-info { font-size: 2rem; font-weight: bold; }
-        .buttons { display: flex; gap: 30px; margin-top: 40px; }
-        .action-btn { width: 80px; height: 80px; border-radius: 50%; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 2.5rem; transition: background-color 0.2s; }
-        #answer-btn { background-color: #43b581; }
-        #decline-btn { background-color: #dc3545; }
+        :root {
+            --bg-color: #23272a; --header-color: #1e2124; --text-color: #fff;
+            --accent-color: #7289da; --green: #43b581; --red: #dc3545; --grey: #99aab5;
+        }
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); }
+        .app-container { display: flex; flex-direction: column; height: 100%; visibility: hidden; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background-color: var(--header-color); flex-shrink: 0; }
+        header a, header button { color: var(--grey); text-decoration: none; background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 5px; }
+        #call-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        #caller-info { height: 60px; }
+        #caller-name { font-size: 2.2rem; font-weight: bold; }
+        #call-status { font-size: 1rem; color: var(--grey); margin-top: 5px; }
+        #main-call-button { width: 100px; height: 100px; border-radius: 50%; border: none; font-size: 3rem; margin-top: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .idle { background-color: var(--accent-color); } .calling-out, .in-call { background-color: var(--red); } .calling-in { background-color: var(--green); }
+        footer { padding: 15px; background-color: var(--header-color); flex-shrink: 0; text-align: center; }
+        #toggle-contacts-btn { font-size: 2rem; color: var(--accent-color); background: none; border: none; cursor: pointer; }
+        #contacts-panel { position: fixed; bottom: 0; left: 0; right: 0; background-color: #2c2f33; border-top: 1px solid #444; max-height: 70%; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s ease-in-out; z-index: 100; }
+        #contacts-panel.visible { transform: translateY(0); }
+        #contacts-header { padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #444; cursor: pointer; }
+        #contacts-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; padding: 15px; } .contact-name { flex-grow: 1; } .contact-call-btn { font-size: 1.5rem; color: var(--green); background: none; border: none; cursor: pointer; }
+        
+        #install-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; }
+        #install-screen h2 { font-size: 2rem; } #install-screen p { color: var(--grey); max-width: 300px; }
+        #install-action-button { width: 100%; max-width: 300px; padding: 15px; background-color: var(--green); color: white; border: none; border-radius: 5px; font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
+        #skip-install-button { color: var(--grey); background: none; border: none; cursor: pointer; }
+        
+        .manual-instructions { display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px; width: 100%; max-width: 300px; }
+        .instruction-gif { width: 100%; border-radius: 8px; margin-top: 10px; }
     </style>
 </head>
 <body>
-
-    <!-- POPRAWKA 1: Dodano klasę 'active', aby ten widok był domyślnie widoczny -->
-    <div id="contacts-view" class="view active">
-        <header>
-            <a href="https://0-skar.github.io/3/">Przejdź do Forum</a>
-            <span>Kontakty</span>
-            <button id="install-button" title="Dodaj na pulpit">📌</button>
-        </header>
-        <ul class="contact-list" id="contact-list"></ul>
-        <div id="status">Łączenie...</div>
+    <div id="install-screen">
+        <h2>Mini-Telefon</h2>
+        <p>Zainstaluj aplikację na pulpicie, aby mieć szybki dostęp do ulubionych kontaktów.</p>
+        <button id="install-action-button">Zainstaluj na pulpicie</button>
+        <button id="skip-install-button">Pomiń na razie</button>
+        
+        <div id="android-instructions" class="manual-instructions">
+            <p><strong>Instrukcja dla Androida (Chrome):</strong></p>
+            <img src="https://i.imgur.com/wP2Glm2.gif" alt="Instrukcja instalacji na Androida" class="instruction-gif">
+        </div>
+        
+        <div id="ios-instructions" class="manual-instructions">
+            <p><strong>Instrukcja dla iPhone'a (Safari):</strong></p>
+            <img src="https://i.imgur.com/24J6z2w.gif" alt="Instrukcja instalacji na iOS" class="instruction-gif">
+        </div>
     </div>
 
-    <div id="incoming-call-view" class="view">
-        <div class="caller-info" id="caller-name">Dzwoni...</div>
-        <div class="buttons">
-            <button id="decline-btn" class="action-btn" title="Odrzuć">❌</button>
-            <button id="answer-btn" class="action-btn" title="Odbierz">📞</button>
+    <div class="app-container">
+        <header>
+            <a id="forum-link" href="https://0-skar.github.io/3/" title="Przejdź do forum">⌂</a>
+            <button id="help-install-button" title="Jak zainstalować?">?</button>
+            <button id="close-button" title="Zamknij">❌</button>
+        </header>
+        <main id="call-area">
+            <div id="caller-info">
+                <div id="caller-name">Gotowy</div>
+                <div id="call-status">Wybierz kontakt, aby zadzwonić</div>
+            </div>
+            <button id="main-call-button" class="idle">📞</button>
+        </main>
+        <footer><button id="toggle-contacts-btn" title="Ulubione Kontakty">⭐</button></footer>
+        <div id="contacts-panel">
+            <div id="contacts-header">Ulubione Kontakty</div>
+            <ul id="contacts-list"></ul>
         </div>
     </div>
 
     <script>
-        const hfSpaceUrl = "eosforus-chat.hf.space";
-        const wsUrl = `wss://${hfSpaceUrl}/ws/`;
-        let socket;
-        let myUsername;
-        let peerConnection;
-        const contactsView = document.getElementById('contacts-view');
-        const incomingCallView = document.getElementById('incoming-call-view');
-        const contactList = document.getElementById('contact-list');
-        const statusDiv = document.getElementById('status');
-        const urlParams = new URLSearchParams(window.location.search);
-        const caller = urlParams.get('caller');
-
-        // POPRAWKA 2: Uproszczona logika startowa
-        if (caller) {
-            // Jeśli jest połączenie przychodzące, przełącz widoki
-            document.title = `Dzwoni: ${caller}`;
-            showIncomingCallView(caller);
-        } else {
-            // W przeciwnym razie (domyślnie) po prostu połącz się, aby pobrać kontakty
-            document.title = 'Kontakty';
-            connectForContacts();
-        }
-
-        function showIncomingCallView(callerName) {
-            // Ukryj widok kontaktów i pokaż widok połączenia
-            contactsView.classList.remove('active');
-            incomingCallView.classList.add('active');
-            
-            const callerNameDiv = document.getElementById('caller-name');
-            const answerBtn = document.getElementById('answer-btn');
-            const declineBtn = document.getElementById('decline-btn');
-            callerNameDiv.textContent = `Dzwoni: ${callerName}`;
-            const ringtone = new Audio('ringtone.mp3');
-            ringtone.loop = true;
-            ringtone.play().catch(e => console.warn("Interakcja wymagana do odtworzenia dźwięku.", e));
-            answerBtn.onclick = () => {
-                ringtone.pause();
-                connectAndAnswer(callerName);
-            };
-            declineBtn.onclick = () => {
-                ringtone.pause();
-                window.close();
-            };
-        }
-        function connectAndAnswer(callerName) {
-            socket = new WebSocket(wsUrl);
-            socket.onopen = () => {
-                myUsername = localStorage.getItem('forumUsername');
-                const myPassword = localStorage.getItem('forumPassword');
-                if (myUsername && myPassword !== null) {
-                    socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
-                } else {
-                    alert("Błąd logowania. Zaloguj się na forum i poproś o ponowne połączenie.");
-                }
-            };
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'join_success') {
-                    socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: callerName } }));
-                    initializeWebRTC(callerName);
-                } else if (data.type === 'webrtc_signal') {
-                    handleWebRTCSignal(data.payload.sender, data.payload.signal);
-                }
-            };
-        }
-
-        function connectForContacts() {
-            socket = new WebSocket(wsUrl);
-            socket.onopen = () => {
-                myUsername = localStorage.getItem('forumUsername');
-                const myPassword = localStorage.getItem('forumPassword');
-                if (myUsername && myPassword !== null) {
-                    socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: myPassword } }));
-                } else {
-                    statusDiv.textContent = 'Brak danych logowania. Zaloguj się najpierw na głównym forum.';
-                }
-            };
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'join_success') {
-                    statusDiv.style.display = 'none';
-                } else if (data.type === 'user_update') {
-                    renderContacts(data.payload.users);
-                }
-            };
-            socket.onclose = () => {
-                statusDiv.textContent = 'Rozłączono. Spróbuj odświeżyć stronę.';
-            };
-        }
-        function renderContacts(allUsers) {
-            const me = allUsers.find(u => u.username === myUsername);
-            if (!me || !me.relationships) {
-                contactList.innerHTML = '';
-                statusDiv.textContent = 'Brak ulubionych kontaktów. Dodaj je na forum.';
-                statusDiv.style.display = 'block';
-                return;
-            }
-            contactList.innerHTML = '';
-            const favoriteUsernames = Object.keys(me.relationships).filter(user => me.relationships[user] === 'favorite');
-            if (favoriteUsernames.length === 0) {
-                 statusDiv.textContent = 'Brak ulubionych kontaktów. Dodaj je na forum.';
-                 statusDiv.style.display = 'block';
-                 return;
-            }
-            favoriteUsernames.forEach(username => {
-                const user = allUsers.find(u => u.username === username);
-                const li = document.createElement('li');
-                li.className = 'contact-item';
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'contact-name';
-                nameSpan.textContent = username;
-                if (user && user.status === 'inactive') nameSpan.classList.add('offline');
-                const callButton = document.createElement('button');
-                callButton.className = 'call-btn';
-                callButton.textContent = '📞';
-                callButton.onclick = () => {
-                    socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
-                    alert(`Dzwonienie do ${username}...`);
-                };
-                const removeButton = document.createElement('button');
-                removeButton.className = 'remove-btn';
-                removeButton.textContent = '✖';
-                removeButton.onclick = () => {
-                    if (confirm(`Czy na pewno chcesz usunąć ${username} z ulubionych?`)) {
-                        socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: username, status: 'neutral' } }));
-                    }
-                };
-                li.appendChild(nameSpan);
-                li.appendChild(callButton);
-                li.appendChild(removeButton);
-                contactList.appendChild(li);
-            });
-        }
-        async function initializeWebRTC(callerName) {
-            try {
-                const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                peerConnection = createPeerConnection(callerName);
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            } catch (err) {
-                alert("Nie można uzyskać dostępu do mikrofonu.");
-            }
-        }
-        function createPeerConnection(targetUser) {
-            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate });
-            pc.ontrack = event => {
-                const audio = document.createElement('audio');
-                audio.srcObject = event.streams[0];
-                audio.autoplay = true;
-                document.body.appendChild(audio);
-            };
-            pc.onconnectionstatechange = () => {
-                if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) window.close();
-            };
-            return pc;
-        }
-        function sendSignal(recipient, signal) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
-            }
-        }
-        async function handleWebRTCSignal(sender, signal) {
-            if (!peerConnection) peerConnection = createPeerConnection(sender);
-            try {
-                if (signal.type === 'offer') {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    sendSignal(sender, { type: 'answer', sdp: answer.sdp });
-                } else if (signal.type === 'ice-candidate') {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                }
-            } catch (err) {
-                console.error(`Błąd obsługi sygnału WebRTC:`, err);
-            }
-        }
-
+        const hfSpaceUrl = "eosforus-chat.hf.space"; const wsUrl = `wss://${hfSpaceUrl}/ws/`;
+        let socket, myUsername, peerConnection, currentCallPartner; let callState = 'IDLE';
+        const ui = { appContainer: document.querySelector('.app-container'), installScreen: document.getElementById('install-screen'), installActionButton: document.getElementById('install-action-button'), skipInstallButton: document.getElementById('skip-install-button'), androidInstructions: document.getElementById('android-instructions'), iosInstructions: document.getElementById('ios-instructions'), helpInstallButton: document.getElementById('help-install-button'), forumLink: document.getElementById('forum-link'), closeButton: document.getElementById('close-button'), callerName: document.getElementById('caller-name'), callStatus: document.getElementById('call-status'), mainCallButton: document.getElementById('main-call-button'), toggleContactsBtn: document.getElementById('toggle-contacts-btn'), contactsPanel: document.getElementById('contacts-panel'), contactsHeader: document.getElementById('contacts-header'), contactsList: document.getElementById('contacts-list'), };
+        
         let deferredPrompt;
-        const installButton = document.getElementById('install-button');
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installButton.style.display = 'block';
-        });
-        installButton.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                await deferredPrompt.userChoice;
-                deferredPrompt = null;
-                installButton.style.display = 'none';
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('installSkipped') || window.matchMedia('(display-mode: standalone)').matches) {
+                showApp();
+            } else {
+                setupInstallScreen();
             }
         });
+
+        function showApp() { ui.installScreen.style.display = 'none'; ui.appContainer.style.visibility = 'visible'; initializeApp(); }
+        
+        function setupInstallScreen() {
+            ui.installActionButton.addEventListener('click', () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choice) => {
+                        if (choice.outcome === 'accepted') { localStorage.setItem('installSkipped', 'true'); showApp(); }
+                    });
+                } else {
+                    const os = getOS();
+                    if (os === 'iOS') { ui.iosInstructions.style.display = 'block'; } 
+                    else { ui.androidInstructions.style.display = 'block'; }
+                }
+            });
+            ui.skipInstallButton.addEventListener('click', () => { localStorage.setItem('installSkipped', 'true'); showApp(); });
+        }
+        
+        function getOS() {
+            const userAgent = window.navigator.userAgent;
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { return 'iOS'; }
+            return 'Android'; // Domyślnie Android lub inny system
+        }
+
+        function initializeApp() { setupEventListeners(); const urlParams = new URLSearchParams(window.location.search); const caller = urlParams.get('caller'); if (caller) { setState('INCOMING_CALL', { name: caller }); } connectForContacts(); }
+        function setupEventListeners() {
+            ui.helpInstallButton.addEventListener('click', () => {
+                localStorage.removeItem('installSkipped'); window.location.reload();
+            });
+            ui.closeButton.addEventListener('click', () => window.close());
+            ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.add('visible'));
+            ui.contactsHeader.addEventListener('click', () => ui.contactsPanel.classList.remove('visible'));
+            ui.mainCallButton.addEventListener('click', handleMainButtonClick);
+        }
+
+        function setState(newState, data = {}) { callState = newState; currentCallPartner = data.name || null; const forumBaseUrl = "https://0-skar.github.io/3/"; if (currentCallPartner) { ui.forumLink.href = `${forumBaseUrl}?action=autologin&chat_with=${currentCallPartner}`; } else { ui.forumLink.href = `${forumBaseUrl}?action=autologin`; } updateUI(data); }
+        function updateUI(data = {}) { const { name, status } = data; ui.mainCallButton.className = 'main-call-button'; switch (callState) { case 'INCOMING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwoni do Ciebie..."; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('calling-in'); break; case 'OUTGOING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwonienie..."; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('calling-out'); break; case 'IN_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Trwa rozmowa"; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('in-call'); break; default: ui.callerName.textContent = "Gotowy"; ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić"; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('idle'); break; } }
+        function handleMainButtonClick() { switch (callState) { case 'INCOMING_CALL': if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); } else { connectForContacts(() => { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); }); } break; case 'OUTGOING_CALL': case 'IN_CALL': if (peerConnection) peerConnection.close(); if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } })); } setState('IDLE', { status: "Rozmowa zakończona" }); break; } }
+        function connectForContacts(callback) { if (socket && socket.readyState === WebSocket.OPEN) { if(callback) callback(); return; } socket = new WebSocket(wsUrl); socket.onopen = () => { myUsername = localStorage.getItem('forumUsername'); if (myUsername) { socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: localStorage.getItem('forumPassword') || '' } })); } else { updateUI({ status: "Zaloguj się na forum" }); } }; socket.onmessage = (event) => { const data = JSON.parse(event.data); switch (data.type) { case 'join_success': if (callback) callback(); break; case 'user_update': renderContacts(data.payload.users); break; case 'webrtc_signal': handleWebRTCSignal(data.payload.sender, data.payload.signal); break; case 'call_answered': setState('IN_CALL', { name: data.payload.callee }); break; case 'call_declined': case 'recipient_busy': setState('IDLE', { status: `${data.payload.recipient || data.payload.callee} jest niedostępny.` }); break; } }; socket.onclose = () => updateUI({ status: "Rozłączono" }); }
+        function renderContacts(allUsers) { const me = allUsers.find(u => u.username === myUsername); ui.contactsList.innerHTML = ''; if (!me || !me.relationships) return; const favorites = Object.keys(me.relationships).filter(u => me.relationships[u] === 'favorite'); if (favorites.length === 0) { ui.contactsList.innerHTML = '<li class="contact-item" style="justify-content: center;">Brak ulubionych</li>'; return; } favorites.forEach(username => { const li = document.createElement('li'); li.className = 'contact-item'; li.innerHTML = `<span class="contact-name">${username}</span><button class="contact-call-btn" title="Zadzwoń do ${username}">📞</button>`; li.querySelector('.contact-call-btn').onclick = () => { ui.contactsPanel.classList.remove('visible'); setState('OUTGOING_CALL', { name: username }); if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } })); initializeWebRTC(username); } }; ui.contactsList.appendChild(li); }); }
+        async function initializeWebRTC(targetUser) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); peerConnection = createPeerConnection(targetUser); stream.getTracks().forEach(track => peerConnection.addTrack(track, stream)); if (callState === 'OUTGOING_CALL') { const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer); sendSignal(targetUser, { type: 'offer', sdp: offer.sdp }); } } catch (err) { setState('IDLE', { status: "Błąd mikrofonu" }); } }
+        function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = e => { const audio = document.createElement('audio'); audio.srcObject = e.streams[0]; audio.autoplay = true; document.body.appendChild(audio); setState('IN_CALL', { name: targetUser }); }; pc.onconnectionstatechange = () => { if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) { if (callState !== 'IDLE') setState('IDLE', { status: "Połączenie zakończone." }); peerConnection = null; } }; return pc; }
+        function sendSignal(recipient, signal) { if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
+        async function handleWebRTCSignal(sender, signal) { if (!peerConnection) initializeWebRTC(sender); try { if (signal.type === 'offer') { await peerConnection.setRemoteDescription(new RTCSessionDescription(signal)); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { await peerConnection.setRemoteDescription(new RTCSessionDescription(signal)); } else if (signal.type === 'ice-candidate') { await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { if (peerConnection) peerConnection.close(); } } catch (err) { console.error("Błąd WebRTC Signal:", err); } }
     </script>
 </body>
 </html>
