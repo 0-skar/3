@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json?v=5"> <!-- Wersja 5, aby na 100% odświeżyć cache -->
+    <link rel="manifest" href="manifest.json?v=6"> <!-- Zwiększona wersja, aby na 100% odświeżyć cache -->
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
@@ -22,7 +22,7 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 15px; background-color: var(--header-color); flex-shrink: 0;
         }
-        header a, header button { color: var(--grey); text-decoration: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+        header a, header button { color: var(--grey); text-decoration: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 5px; }
         #install-button { display: none; } /* Pokaże się, gdy PWA będzie dostępne */
 
         /* --- GŁÓWNY OBSZAR POŁĄCZENIA --- */
@@ -38,11 +38,9 @@
             font-size: 3rem; margin-top: 40px; cursor: pointer; transition: background-color 0.2s;
             display: flex; justify-content: center; align-items: center;
         }
-        /* Style przycisku w zależności od stanu */
         .idle { background-color: var(--accent-color); }
-        .calling-out { background-color: var(--red); }
+        .calling-out, .in-call { background-color: var(--red); }
         .calling-in { background-color: var(--green); }
-        .in-call { background-color: var(--red); }
         
         /* --- DOLNY PASEK Z KONTAKTAMI --- */
         footer {
@@ -73,9 +71,9 @@
 <body>
 
     <header>
-        <a href="https://0-skar.github.io/3/">⌂</a>
-        <span id="page-title">Kontakty</span>
-        <button id="install-button" title="Dodaj na pulpit">📌</button>
+        <a href="https://0-skar.github.io/3/" title="Przejdź do forum">⌂</a>
+        <!-- USUNIĘTO: Zbędny tytuł "Kontakty" -->
+        <button id="install-button" title="Zapisz na pulpicie">📌</button>
     </header>
 
     <main id="call-area">
@@ -102,7 +100,7 @@
         const hfSpaceUrl = "eosforus-chat.hf.space";
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         let socket, myUsername, peerConnection, currentCallPartner;
-        let callState = 'IDLE'; // Możliwe stany: IDLE, INCOMING_CALL, OUTGOING_CALL, IN_CALL
+        let callState = 'IDLE';
 
         const ui = {
             installButton: document.getElementById('install-button'),
@@ -122,7 +120,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const caller = urlParams.get('caller');
             connectForContacts(() => {
-                if (caller) { // Jeśli jest połączenie przychodzące połącz się i obsłuż
+                if (caller) {
                     setState('INCOMING_CALL', { name: caller });
                 }
             });
@@ -138,8 +136,7 @@
 
         function updateUI(data = {}) {
             const { name, status } = data;
-            // Resetuj klasy przycisku
-            ui.mainCallButton.className = 'main-call-button';
+            ui.mainCallButton.className = 'main-call-button'; // Reset klas
 
             switch (callState) {
                 case 'INCOMING_CALL':
@@ -160,8 +157,7 @@
                     ui.mainCallButton.innerHTML = "❌";
                     ui.mainCallButton.classList.add('in-call');
                     break;
-                case 'IDLE':
-                default:
+                default: // IDLE
                     ui.callerName.textContent = "Gotowy";
                     ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić";
                     ui.mainCallButton.innerHTML = "📞";
@@ -172,17 +168,27 @@
         
         // === SEKCJA 4: OBSŁUGA ZDARZEŃ ===
         function setupEventListeners() {
-            // Przycisk instalacji PWA
+            // Logika "Zapisz na pulpicie" (Pineska)
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                ui.installButton.style.display = 'block';
+                ui.installButton.style.display = 'block'; // Pokaż przycisk
             });
-            ui.installButton.addEventListener('click', () => deferredPrompt?.prompt());
+            ui.installButton.addEventListener('click', () => {
+                if(deferredPrompt) deferredPrompt.prompt();
+            });
 
-            // Przełączanie panelu kontaktów
-            ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.toggle('visible'));
+            // Zwijanie i rozwijanie panelu kontaktów
+            ui.toggleContactsBtn.addEventListener('click', () => {
+                ui.contactsPanel.classList.toggle('visible');
+                // ZMIANA: Zmień tekst przycisku
+                if (ui.contactsPanel.classList.contains('visible')) {
+                    ui.toggleContactsBtn.textContent = 'Ukryj Kontakty';
+                } else {
+                    ui.toggleContactsBtn.textContent = 'Pokaż Kontakty';
+                }
+            });
 
             // Główny przycisk akcji
             ui.mainCallButton.addEventListener('click', handleMainButtonClick);
@@ -191,17 +197,15 @@
         function handleMainButtonClick() {
             switch (callState) {
                 case 'INCOMING_CALL':
-                    if (socket && socket.readyState === WebSocket.OPEN) {
+                    if (socket?.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } }));
                         initializeWebRTC(currentCallPartner);
-                        setState('IN_CALL', { name: currentCallPartner });
                     }
                     break;
                 case 'OUTGOING_CALL':
                 case 'IN_CALL':
                     if (peerConnection) peerConnection.close();
-                    // Dodatkowo wyślij sygnał 'hangup'
-                    if (socket && socket.readyState === WebSocket.OPEN) {
+                    if (socket?.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } }));
                     }
                     setState('IDLE', { status: "Rozmowa zakończona" });
@@ -235,21 +239,22 @@
 
         function renderContacts(allUsers) {
             const me = allUsers.find(u => u.username === myUsername);
-            ui.contactsList.innerHTML = ''; // Wyczyść listę
+            ui.contactsList.innerHTML = '';
             if (!me || !me.relationships) return;
             const favorites = Object.keys(me.relationships).filter(u => me.relationships[u] === 'favorite');
             if (favorites.length === 0) {
-                 ui.contactsList.innerHTML = '<li class="contact-item">Brak ulubionych kontaktów</li>';
-                 return;
+                ui.contactsList.innerHTML = '<li class="contact-item" style="justify-content: center;">Brak ulubionych</li>';
+                return;
             }
             favorites.forEach(username => {
                 const li = document.createElement('li');
                 li.className = 'contact-item';
-                li.innerHTML = `<span class="contact-name">${username}</span><button class="contact-call-btn">📞</button>`;
+                li.innerHTML = `<span class="contact-name">${username}</span><button class="contact-call-btn" title="Zadzwoń do ${username}">📞</button>`;
                 li.querySelector('.contact-call-btn').onclick = () => {
-                    ui.contactsPanel.classList.remove('visible'); // Schowaj panel
+                    ui.contactsPanel.classList.remove('visible');
+                    ui.toggleContactsBtn.textContent = 'Pokaż Kontakty'; // Zresetuj tekst przycisku
                     setState('OUTGOING_CALL', { name: username });
-                    if (socket && socket.readyState === WebSocket.OPEN) {
+                    if (socket?.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'initiate_call', payload: { recipient: username } }));
                         initializeWebRTC(username);
                     }
@@ -258,61 +263,16 @@
             });
         }
 
-        async function initializeWebRTC(targetUser) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                peerConnection = createPeerConnection(targetUser);
-                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-                if (callState === 'OUTGOING_CALL') { // Jeśli to my dzwonimy, stwórz ofertę
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    sendSignal(targetUser, { type: 'offer', sdp: offer.sdp });
-                }
-            } catch (err) { setState('IDLE', { status: "Błąd mikrofonu" }); }
-        }
+        async function initializeWebRTC(targetUser) { /* ... bez zmian ... */ }
+        function createPeerConnection(targetUser) { /* ... bez zmian ... */ }
+        function sendSignal(recipient, signal) { /* ... bez zmian ... */ }
+        async function handleWebRTCSignal(sender, signal) { /* ... bez zmian ... */ }
 
-        function createPeerConnection(targetUser) {
-            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-            pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate });
-            pc.ontrack = e => {
-                const audio = document.createElement('audio');
-                audio.srcObject = e.streams[0];
-                audio.autoplay = true;
-                document.body.appendChild(audio);
-                setState('IN_CALL', { name: targetUser });
-            };
-            pc.onconnectionstatechange = () => {
-                if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) {
-                    if (callState !== 'IDLE') setState('IDLE', { status: "Połączenie zakończone." });
-                    peerConnection = null;
-                }
-            };
-            return pc;
-        }
-
-        function sendSignal(recipient, signal) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } }));
-            }
-        }
-
-        async function handleWebRTCSignal(sender, signal) {
-            if (!peerConnection) initializeWebRTC(sender);
-            try {
-                if (signal.type === 'offer') {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    sendSignal(sender, { type: 'answer', sdp: answer.sdp });
-                } else if (signal.type === 'answer') {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(signal));
-                } else if (signal.type === 'ice-candidate') {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                } else if (signal.type === 'hangup') {
-                    if (peerConnection) peerConnection.close();
-                }
-            } catch (err) { console.error("Błąd WebRTC Signal:", err); }
-        }
+        // Pozostałe funkcje (wklejone dla kompletności)
+        async function initializeWebRTC(targetUser) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); peerConnection = createPeerConnection(targetUser); stream.getTracks().forEach(track => peerConnection.addTrack(track, stream)); if (callState === 'OUTGOING_CALL') { const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer); sendSignal(targetUser, { type: 'offer', sdp: offer.sdp }); } } catch (err) { setState('IDLE', { status: "Błąd mikrofonu" }); } }
+        function createPeerConnection(targetUser) { const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); pc.onicecandidate = e => e.candidate && sendSignal(targetUser, { type: 'ice-candidate', candidate: e.candidate }); pc.ontrack = e => { const audio = document.createElement('audio'); audio.srcObject = e.streams[0]; audio.autoplay = true; document.body.appendChild(audio); setState('IN_CALL', { name: targetUser }); }; pc.onconnectionstatechange = () => { if (['disconnected', 'closed', 'failed'].includes(pc.connectionState)) { if (callState !== 'IDLE') setState('IDLE', { status: "Połączenie zakończone." }); peerConnection = null; } }; return pc; }
+        function sendSignal(recipient, signal) { if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient, signal } })); } }
+        async function handleWebRTCSignal(sender, signal) { if (!peerConnection) initializeWebRTC(sender); try { if (signal.type === 'offer') { await peerConnection.setRemoteDescription(new RTCSessionDescription(signal)); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { await peerConnection.setRemoteDescription(new RTCSessionDescription(signal)); } else if (signal.type === 'ice-candidate') { await peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { if (peerConnection) peerConnection.close(); } } catch (err) { console.error("Błąd WebRTC Signal:", err); } }
     </script>
 </body>
 </html>
