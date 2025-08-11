@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json?v=7"> <!-- Zwiększona wersja, by na 100% odświeżyć cache -->
+    <link rel="manifest" href="manifest.json?v=8"> <!-- Zwiększona wersja, aby na 100% odświeżyć cache -->
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
@@ -23,7 +23,8 @@
             padding: 10px 15px; background-color: var(--header-color); flex-shrink: 0;
         }
         header a, header button { color: var(--grey); text-decoration: none; background: none; border: none; font-size: 1.8rem; cursor: pointer; padding: 5px; }
-        #install-button { display: none; } /* Pokaże się, gdy PWA będzie możliwe */
+        /* ZMIANA: Przycisk instalacji jest teraz zawsze widoczny, jeśli jest dostępny */
+        #install-button { display: none; }
 
         /* --- GŁÓWNY OBSZAR POŁĄCZENIA --- */
         #call-area {
@@ -58,7 +59,7 @@
             transform: translateY(100%); transition: transform 0.3s ease-in-out; z-index: 100;
         }
         #contacts-panel.visible { transform: translateY(0); }
-        #contacts-header { padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #444; }
+        #contacts-header { padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #444; cursor: pointer; }
         #contacts-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 15px; }
         .contact-name { flex-grow: 1; }
@@ -68,11 +69,8 @@
 <body>
 
     <header>
-        <!-- ZMIANA: Ikona PINESKI jest teraz po lewej i ZAWSZE widoczna -->
-        <button id="install-button" title="Zapisz na pulpicie">📌</button>
-        <!-- ZMIANA: Link do forum ma teraz ID, aby skrypt mógł go modyfikować -->
         <a id="forum-link" href="https://0-skar.github.io/3/" title="Przejdź do forum">⌂</a>
-        <!-- ZMIANA: Dodano przycisk ZAMKNIJ -->
+        <button id="install-button" title="Zapisz na pulpicie">📌</button>
         <button id="close-button" title="Zamknij">❌</button>
     </header>
 
@@ -85,17 +83,15 @@
     </main>
 
     <footer>
-        <!-- ZMIANA: Przycisk z tekstem zastąpiony ikoną gwiazdki -->
         <button id="toggle-contacts-btn" title="Ulubione Kontakty">⭐</button>
     </footer>
 
     <div id="contacts-panel">
-        <div id="contacts-header">Ulubione Kontakty</div>
+        <div id="contacts-header">Ulubione Kontakty (kliknij, by schować)</div>
         <ul id="contacts-list"></ul>
     </div>
 
     <script>
-        // === SEKCJA 1: INICJALIZACJA ===
         const hfSpaceUrl = "eosforus-chat.hf.space";
         const wsUrl = `wss://${hfSpaceUrl}/ws/`;
         let socket, myUsername, peerConnection, currentCallPartner;
@@ -110,57 +106,55 @@
             mainCallButton: document.getElementById('main-call-button'),
             toggleContactsBtn: document.getElementById('toggle-contacts-btn'),
             contactsPanel: document.getElementById('contacts-panel'),
+            contactsHeader: document.getElementById('contacts-header'),
             contactsList: document.getElementById('contacts-list'),
         };
 
-        // === SEKCJA 2: GŁÓWNA LOGIKA APLIKACJI ===
         document.addEventListener('DOMContentLoaded', initializeApp);
 
         function initializeApp() {
             setupEventListeners();
             const urlParams = new URLSearchParams(window.location.search);
             const caller = urlParams.get('caller');
-            // ZMIANA: Modyfikuj link forum, aby dodać parametr do auto-logowania
-            const forumBaseUrl = ui.forumLink.href;
-            ui.forumLink.href = `${forumBaseUrl}?action=autologin`;
-
+            
             connectForContacts(() => {
                 if (caller) setState('INCOMING_CALL', { name: caller });
             });
             updateUI();
         }
 
-        // === SEKCJA 3: OBSŁUGA ZDARZEŃ ===
         function setupEventListeners() {
-            // Logika "Zapisz na pulpicie" (Pineska)
             let deferredPrompt;
             window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                ui.installButton.style.display = 'block'; // Pokaż przycisk, bo jest dostępny
+                e.preventDefault(); deferredPrompt = e; ui.installButton.style.display = 'block';
             });
             ui.installButton.addEventListener('click', () => {
-                if(deferredPrompt) {
-                    deferredPrompt.prompt();
-                } else {
-                    alert("Aplikację można zainstalować tylko z poziomu przeglądarki, która to wspiera (np. Chrome, Edge). Być może jest już zainstalowana lub monit został odrzucony.");
-                }
+                if(deferredPrompt) deferredPrompt.prompt();
+                else alert("Aplikacja jest już zainstalowana lub przeglądarka nie wspiera tej funkcji.");
             });
-
-            // Przycisk zamknięcia
             ui.closeButton.addEventListener('click', () => window.close());
-            
-            // Przełączanie panelu kontaktów
-            ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.toggle('visible'));
-
-            // Główny przycisk akcji
+            ui.toggleContactsBtn.addEventListener('click', () => ui.contactsPanel.classList.add('visible'));
+            // ZMIANA: Kliknięcie w nagłówek panelu go chowa
+            ui.contactsHeader.addEventListener('click', () => ui.contactsPanel.classList.remove('visible'));
             ui.mainCallButton.addEventListener('click', handleMainButtonClick);
         }
-        
-        // Pozostałe sekcje (Zarządzanie stanem, Komunikacja, WebRTC) pozostają
-        // takie same jak w poprzedniej wersji. Wklejam je poniżej dla kompletności.
 
-        function setState(newState, data = {}) { callState = newState; currentCallPartner = data.name || null; updateUI(data); }
+        function setState(newState, data = {}) {
+            callState = newState;
+            currentCallPartner = data.name || null;
+            // ZMIANA: Dynamiczna aktualizacja linku do forum
+            const forumBaseUrl = "https://0-skar.github.io/3/";
+            if (currentCallPartner) {
+                ui.forumLink.href = `${forumBaseUrl}?action=autologin&chat_with=${currentCallPartner}`;
+            } else {
+                ui.forumLink.href = `${forumBaseUrl}?action=autologin`;
+            }
+            updateUI(data);
+        }
+        
+        // Pozostałe funkcje (updateUI, handleMainButtonClick, connectForContacts, etc.)
+        // pozostają takie same jak w poprzedniej wersji. Wklejam je poniżej dla kompletności.
+        
         function updateUI(data = {}) { const { name, status } = data; ui.mainCallButton.className = 'main-call-button'; switch (callState) { case 'INCOMING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwoni do Ciebie..."; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('calling-in'); break; case 'OUTGOING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwonienie..."; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('calling-out'); break; case 'IN_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Trwa rozmowa"; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('in-call'); break; default: ui.callerName.textContent = "Gotowy"; ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić"; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('idle'); break; } }
         function handleMainButtonClick() { switch (callState) { case 'INCOMING_CALL': if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); } break; case 'OUTGOING_CALL': case 'IN_CALL': if (peerConnection) peerConnection.close(); if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } })); } setState('IDLE', { status: "Rozmowa zakończona" }); break; } }
         function connectForContacts(callback) { socket = new WebSocket(wsUrl); socket.onopen = () => { myUsername = localStorage.getItem('forumUsername'); if (myUsername) { socket.send(JSON.stringify({ type: 'join', payload: { username: myUsername, password: localStorage.getItem('forumPassword') || '' } })); } else { updateUI({ status: "Zaloguj się na forum" }); } }; socket.onmessage = (event) => { const data = JSON.parse(event.data); switch (data.type) { case 'join_success': if (callback) callback(); break; case 'user_update': renderContacts(data.payload.users); break; case 'webrtc_signal': handleWebRTCSignal(data.payload.sender, data.payload.signal); break; case 'call_answered': setState('IN_CALL', { name: data.payload.callee }); break; case 'call_declined': case 'recipient_busy': setState('IDLE', { status: `${data.payload.recipient || data.payload.callee} jest niedostępny.` }); break; } }; socket.onclose = () => updateUI({ status: "Rozłączono" }); }
