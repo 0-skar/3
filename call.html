@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kontakty</title>
-    <link rel="manifest" href="manifest.json?v=17">
+    <link rel="manifest" href="manifest.json?v=16">
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
         :root {
@@ -29,13 +29,18 @@
         #contacts-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 15px; } .contact-name { flex-grow: 1; } .contact-call-btn { font-size: 1.5rem; color: var(--green); background: none; border: none; cursor: pointer; }
         
+        /* EKRAN INSTALACYJNY */
         #install-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; }
         #install-screen h2 { font-size: 2rem; } #install-screen p { color: var(--grey); max-width: 300px; }
         #install-action-button { width: 100%; max-width: 300px; padding: 15px; background-color: var(--green); color: white; border: none; border-radius: 5px; font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
         #skip-install-button { color: var(--grey); background: none; border: none; cursor: pointer; }
         
-        .manual-instructions { display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px; width: 100%; max-width: 300px; }
-        .instruction-gif { width: 100%; border-radius: 8px; margin-top: 10px; }
+        /* WIZUALNE INSTRUKCJE */
+        .manual-instructions { display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        .instruction-step { display: flex; align-items: center; background-color: var(--header-color); padding: 10px; border-radius: 8px; margin-top: 10px; }
+        .instruction-icon { font-size: 2rem; margin-right: 15px; }
+        .instruction-icon-ios-share { width: 30px; height: 30px; margin-right: 15px; }
+        .instruction-text { text-align: left; }
     </style>
 </head>
 <body>
@@ -46,13 +51,27 @@
         <button id="skip-install-button">Pomiń na razie</button>
         
         <div id="android-instructions" class="manual-instructions">
-            <p><strong>Instrukcja dla Androida (Chrome):</strong></p>
-            <img src="https://i.imgur.com/wP2Glm2.gif" alt="Instrukcja instalacji na Androida" class="instruction-gif">
+            <p><strong>Instrukcja dla Androida:</strong></p>
+            <div class="instruction-step">
+                <span class="instruction-icon">⋮</span>
+                <span class="instruction-text">Naciśnij <strong>trzy kropki</strong> w rogu przeglądarki.</span>
+            </div>
+            <div class="instruction-step">
+                <span class="instruction-icon">📥</span>
+                <span class="instruction-text">Wybierz <strong>"Zainstaluj aplikację"</strong>.</span>
+            </div>
         </div>
         
         <div id="ios-instructions" class="manual-instructions">
-            <p><strong>Instrukcja dla iPhone'a (Safari):</strong></p>
-            <img src="https://i.imgur.com/24J6z2w.gif" alt="Instrukcja instalacji na iOS" class="instruction-gif">
+            <p><strong>Instrukcja dla iPhone'a:</strong></p>
+            <div class="instruction-step">
+                <svg class="instruction-icon-ios-share" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2.5V11M13.5 6L9 1.5 4.5 6M4 8.5H3a1.5 1.5 0 00-1.5 1.5v5A1.5 1.5 0 003 16.5h12a1.5 1.5 0 001.5-1.5v-5A1.5 1.5 0 0015 8.5h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="instruction-text">Naciśnij ikonę <strong>Udostępnij</strong> na dolnym pasku.</span>
+            </div>
+            <div class="instruction-step">
+                <span class="instruction-icon">⊕</span>
+                <span class="instruction-text">Przewiń w dół i wybierz <strong>"Do ekranu początkowego"</strong>.</span>
+            </div>
         </div>
     </div>
 
@@ -113,7 +132,7 @@
         function getOS() {
             const userAgent = window.navigator.userAgent;
             if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) { return 'iOS'; }
-            return 'Android'; // Domyślnie Android lub inny system
+            return 'Android';
         }
 
         function initializeApp() { setupEventListeners(); const urlParams = new URLSearchParams(window.location.search); const caller = urlParams.get('caller'); if (caller) { setState('INCOMING_CALL', { name: caller }); } connectForContacts(); }
@@ -127,6 +146,8 @@
             ui.mainCallButton.addEventListener('click', handleMainButtonClick);
         }
 
+        // Reszta skryptów (setState, updateUI, handleMainButtonClick, etc.) jest taka sama.
+        // Wklejone poniżej dla kompletności.
         function setState(newState, data = {}) { callState = newState; currentCallPartner = data.name || null; const forumBaseUrl = "https://0-skar.github.io/3/"; if (currentCallPartner) { ui.forumLink.href = `${forumBaseUrl}?action=autologin&chat_with=${currentCallPartner}`; } else { ui.forumLink.href = `${forumBaseUrl}?action=autologin`; } updateUI(data); }
         function updateUI(data = {}) { const { name, status } = data; ui.mainCallButton.className = 'main-call-button'; switch (callState) { case 'INCOMING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwoni do Ciebie..."; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('calling-in'); break; case 'OUTGOING_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Dzwonienie..."; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('calling-out'); break; case 'IN_CALL': ui.callerName.textContent = name; ui.callStatus.textContent = "Trwa rozmowa"; ui.mainCallButton.innerHTML = "❌"; ui.mainCallButton.classList.add('in-call'); break; default: ui.callerName.textContent = "Gotowy"; ui.callStatus.textContent = status || "Wybierz kontakt, aby zadzwonić"; ui.mainCallButton.innerHTML = "📞"; ui.mainCallButton.classList.add('idle'); break; } }
         function handleMainButtonClick() { switch (callState) { case 'INCOMING_CALL': if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); } else { connectForContacts(() => { socket.send(JSON.stringify({ type: 'call_answered', payload: { caller: currentCallPartner } })); initializeWebRTC(currentCallPartner); }); } break; case 'OUTGOING_CALL': case 'IN_CALL': if (peerConnection) peerConnection.close(); if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'webrtc_signal', payload: { recipient: currentCallPartner, signal: { type: 'hangup' } } })); } setState('IDLE', { status: "Rozmowa zakończona" }); break; } }
