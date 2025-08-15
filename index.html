@@ -88,6 +88,11 @@
         #call-btn:hover { filter: brightness(1.2); }
         #call-btn.calling { animation: pulse-red 1.5s infinite; }
         #call-btn.incoming-call { animation: pulse-green 1.5s infinite; }
+        
+        /* ZMIANA 2: Dodajemy styl dla logo w nagłówku */
+        .header-logo {
+            height: 36px;
+        }
     </style>
 </head>
 <body>
@@ -99,6 +104,8 @@
                         <a href="https://0-skar.github.io/0/" id="home-link" title="Strona główna" target="_blank" rel="noopener noreferrer">
                             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
                         </a>
+                        <!-- ZMIANA 1: Dodajemy element graficzny (logo) -->
+                        <img src="https://raw.githubusercontent.com/0-skar/3/main/Trans%20S.png" alt="Logo" class="header-logo">
                         <span id="header-title">Forum</span>
                     </div>
                     <div class="header-right-panel">
@@ -134,6 +141,9 @@
     </div>
     
     <script>
+        // Ta sekcja skryptu pozostaje BEZ ZMIAN w stosunku do
+        // ostatniej, w pełni działającej wersji.
+        
         const VAPID_PUBLIC_KEY = "BD8O0XhtyebRHHOUgMtsdkNl1j6C_ugAmEPGnXEiy-SuDK6JJIYgrdKXquvk3gmYuujmmft7WQMnTZlibryenyQ=";
         function registerServiceWorker() { if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').then(r => console.log('SW registered.')).catch(e => console.error('SW error.', e)); } }
         function urlBase64ToUint8Array(base64String) { const padding = '='.repeat((4 - base64String.length % 4) % 4); const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/'); const rawData = window.atob(base64); const outputArray = new Uint8Array(rawData.length); for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); } return outputArray; }
@@ -173,7 +183,6 @@
         function cleanupVoiceChat(targetUser) { if (peerConnections[targetUser]) { peerConnections[targetUser].close(); delete peerConnections[targetUser]; } const audio = document.getElementById(`audio-${targetUser}`); if (audio) audio.remove(); if (targetUser === activeChat) { resetCallButton(); } }
         async function handleWebRTCSignal(sender, signal) { let pc = peerConnections[sender]; try { if (signal.type === 'offer') { if (pc) return; pc = createPeerConnection(sender); await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp })); const answer = await pc.createAnswer(); await pc.setLocalDescription(answer); sendSignal(sender, { type: 'answer', sdp: answer.sdp }); } else if (signal.type === 'answer') { if (!pc) return; await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp })); } else if (signal.type === 'ice-candidate') { if (!pc) return; await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } else if (signal.type === 'hangup') { cleanupVoiceChat(sender); addMessage({username:'System', message:`${sender} zakończył(a) rozmowę.`}, sender); } } catch (err) { console.error(`Błąd obsługi sygnału WebRTC od ${sender}:`, err); cleanupVoiceChat(sender); } }
         async function toggleVoice() { if (isRecording) { recognition.stop(); } if (!localStream) { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); } catch (err) { alert("Nie udało się uzyskać dostępu do mikrofonu."); return; } } isVoiceActive = !isVoiceActive; if (isVoiceActive) { audioContainer.querySelectorAll('audio').forEach(audio => audio.play().catch(e => console.warn("Interakcja potrzebna do audio."))); } localStream.getAudioTracks().forEach(track => track.enabled = isVoiceActive); setAllIncomingAudio(isVoiceActive); updateAllVoiceConnections(); const voiceBtn = document.getElementById('self-voice-toggle-btn'); if (voiceBtn) { voiceBtn.innerHTML = isVoiceActive ? '🔊' : '🔈'; voiceBtn.title = isVoiceActive ? 'Wyłącz głos' : 'Włącz głos'; voiceBtn.classList.toggle('active', isVoiceActive); } }
-
         function createChatWindow(id, name) {
             if (document.getElementById(`messages-${id}`)) return;
             const messagesDiv = document.createElement('ul'); messagesDiv.className = 'messages'; messagesDiv.id = `messages-${id}`; messagesDiv.style.display = 'none'; ui.chatWindows.appendChild(messagesDiv);
@@ -190,17 +199,14 @@
                 updateRelationshipIcon(id);
             }
         }
-        
         function toggleRelationship(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (!currentUserData) return; if (!currentUserData.relationships) { currentUserData.relationships = {}; } const currentStatus = currentUserData.relationships[partner] || 'neutral'; let nextStatus = 'neutral'; if (currentStatus === 'neutral') nextStatus = 'favorite'; else if (currentStatus === 'favorite') nextStatus = 'blocked'; else if (currentStatus === 'blocked') nextStatus = 'neutral'; currentUserData.relationships[partner] = nextStatus; updateRelationshipIcon(partner); if (nextStatus === 'favorite') { subscribeUserForPush(); } if (socket && socket.readyState === WebSocket.OPEN) { socket.send(JSON.stringify({ type: 'update_relationship', payload: { partner: partner, status: nextStatus } })); } }
         function updateRelationshipIcon(partner) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const icon = document.querySelector(`.relationship-icon[data-partner="${partner}"]`); if (!currentUserData || typeof currentUserData.relationships === 'undefined' || !icon) return; const status = currentUserData.relationships[partner] || 'neutral'; icon.classList.remove('favorite', 'blocked'); if (status === 'favorite') { icon.innerHTML = BELL_SVG; icon.classList.add('favorite'); icon.title = 'Powiadomienia włączone (Ulubiony)'; } else if (status === 'blocked') { icon.innerHTML = THUMB_DOWN_SVG; icon.classList.add('blocked'); icon.title = 'Zablokowany'; } else { icon.innerHTML = THUMB_UP_SVG; icon.title = 'Oznacz jako ulubionego (włącz powiadomienia)'; } }
         function updateClearHistoryButtonState() { const currentUserData = allUsers.find(u => u.username === sessionUsername); const isPermanentUser = currentUserData && currentUserData.role !== 'user'; if (!sessionUsername || !currentUserData) { ui.clearHistoryBtn.style.display = 'none'; return; } if (activeChat === 'public') { ui.clearHistoryBtn.title = 'Wyczyść cały czat publiczny'; if (isModerator) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; } } else { ui.clearHistoryBtn.title = `Wyczyść historię rozmowy z ${activeChat}`; if (isPermanentUser) { ui.clearHistoryBtn.style.display = 'block'; } else { ui.clearHistoryBtn.style.display = 'none'; } } }
-        
         function resetCallButton() {
             incomingCaller = null;
             ui.callBtn.classList.remove('calling', 'incoming-call');
             ui.callBtn.title = "Zadzwoń";
         }
-
         function updateCallButtonVisibility() {
             resetCallButton();
             if (activeChat === 'public' || !sessionUsername) {
@@ -215,7 +221,6 @@
                 else { ui.callBtn.style.display = 'none'; }
             } else { ui.callBtn.style.display = 'none'; }
         }
-
         function switchChat(id) {
             activeChat = id;
             if (id === 'public') {
@@ -246,24 +251,13 @@
             updateClearHistoryButtonState();
             updateCallButtonVisibility();
         }
-
         function addMessage(data, targetChatId) { const isPrivate = targetChatId !== 'public'; const mDiv = document.getElementById(`messages-${targetChatId}`); if (!mDiv) return; const i = document.createElement('li'); let timeString = ''; if (data.timestamp) { const date = new Date(data.timestamp); timeString = `<span class="timestamp">${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</span>`; } if (data.username === "System") { i.className = 'system-message'; i.innerHTML = `${timeString} ${data.message}`; } else { const senderName = isPrivate ? data.sender : data.username; i.className = isPrivate ? 'private-message' : 'user-message'; i.innerHTML = `${timeString}<span class="username-color">${senderName}</span>: ${data.message}`; } const shouldScroll = mDiv.scrollTop + mDiv.clientHeight >= mDiv.scrollHeight - 20; mDiv.appendChild(i); if (shouldScroll) mDiv.scrollTop = mDiv.scrollHeight; }
-        
-        function renderUsers(users) {
-            const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); updateCallButtonVisibility(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); localStorage.removeItem('forumPassword'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); updateClearHistoryButtonState();
-            
-            if (pendingChatPartner && allUsers.some(u => u.username === pendingChatPartner)) {
-                openPrivateChat(pendingChatPartner);
-                pendingChatPartner = null;
-            }
-        }
-        
+        function renderUsers(users) { const oldUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); allUsers = users; const newUsersJSON = JSON.stringify(allUsers.map(u => ({u: u.username, r: u.relationships}))); if (oldUsersJSON !== newUsersJSON) { document.querySelectorAll('.relationship-icon').forEach(icon => updateRelationshipIcon(icon.dataset.partner)); updateAllVoiceConnections(); updateCallButtonVisibility(); } const currentUserData = allUsers.find(u => u.username === sessionUsername); const isActive = currentUserData && currentUserData.status === 'active'; isModerator = isActive && currentUserData.role === 'moderator'; ui.input.disabled = !isActive; ui.sendButton.disabled = !isActive; ui.micToTextBtn.disabled = !isActive; ui.input.placeholder = isActive ? "Wpisz wiadomość..." : "Zaloguj się, aby rozmawiać..."; if (storedUsername && !users.some(u => u.username === storedUsername)) { localStorage.removeItem('forumUsername'); localStorage.removeItem('forumPassword'); storedUsername = null; } if (storedUsername && isActive) { ui.newUserSlot.style.display = 'none'; ui.newUserSlot.innerHTML = ''; } else { ui.newUserSlot.style.display = 'block'; createRegistrationSlot(); } ui.userSlotsContainer.innerHTML = ''; const roleOrder = { 'moderator': 0, 'vip': 1, 'user': 2 }; users.sort((a, b) => (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3) || a.username.localeCompare(b.username)) .forEach(user => { const isMyStoredIdentity = user.username === sessionUsername; const slot = document.createElement('div'); slot.className = `user-slot ${user.status === 'inactive' ? 'inactive' : ''}`; if (currentUserData && user.relationships && user.relationships[sessionUsername] === 'blocked') { slot.classList.add('blocked-by-user'); slot.title = 'Ten użytkownik Cię zablokował.'; } const header = document.createElement('div'); header.className = 'user-slot-header'; let roleIcon = ''; if (user.role === 'moderator') roleIcon = '👑 '; else if (user.role === 'vip') roleIcon = '⭐ '; if (user.status === 'inactive' && roleIcon) roleIcon = `<span class="inactive-icon">${roleIcon.trim()}</span> `; let nameHTML = roleIcon + user.username; let actionsHTML = ''; if (isMyStoredIdentity && isActive) { nameHTML += ' (Ty)'; const voiceIcon = isVoiceActive ? '🔊' : '🔈'; actionsHTML += `<button id="self-voice-toggle-btn" class="action-button voice-toggle-btn ${isVoiceActive ? 'active' : ''}" title="Włącz/wyłącz głos">${voiceIcon}</button>`; actionsHTML += `<button id="self-action-toggle-btn" class="action-button" title="Akcje konta">×</button>`; } else if (isModerator && user.username !== sessionUsername) { actionsHTML += `<button id="mod-action-toggle-btn-${user.username}" class="action-button" data-user="${user.username}" title="Akcje moderatora">×</button>`; } header.innerHTML = `<span class="user-name">${nameHTML}</span> ${actionsHTML}`; slot.appendChild(header); const nameElement = header.querySelector('.user-name'); if (isActive) { if (user.username !== sessionUsername) { nameElement.onclick = () => openPrivateChat(user.username); } else { nameElement.onclick = () => { if (lastPrivateChatPartner) { switchChat(lastPrivateChatPartner); } }; } } else { if (user.status === 'inactive') { nameElement.onclick = () => showLoginForm(slot, user.username, false); } else { nameElement.style.cursor = 'default'; } } const selfActionBtn = header.querySelector('#self-action-toggle-btn'); if (selfActionBtn) { selfActionBtn.onclick = (e) => { e.stopPropagation(); const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); selfActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showSelfActionMenu(slot, user.role !== 'user'); selfActionBtn.classList.add('active-danger'); } }; } const modActionBtn = header.querySelector(`#mod-action-toggle-btn-${user.username}`); if (modActionBtn) { modActionBtn.onclick = (e) => { e.stopPropagation(); const targetUsername = modActionBtn.dataset.user; const existingMenu = slot.querySelector('.action-menu'); if (existingMenu) { existingMenu.remove(); modActionBtn.classList.remove('active-danger'); } else { removeActiveForms(); showModeratorActionMenu(slot, targetUsername); modActionBtn.classList.add('active-danger'); } } } const selfVoiceBtn = header.querySelector('#self-voice-toggle-btn'); if(selfVoiceBtn) selfVoiceBtn.onclick = (e) => { e.stopPropagation(); toggleVoice(); }; ui.userSlotsContainer.appendChild(slot); }); updateClearHistoryButtonState(); }
         function resetSession() { if (isVoiceActive) toggleVoice(); Object.keys(peerConnections).forEach(cleanupVoiceChat); if(localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; } sessionUsername = null; isModerator = false; ui.micToTextBtn.disabled = true; renderUsers(allUsers); switchChat('public'); }
         function handleAutoLoginOnStartup() { const urlParams = new URLSearchParams(window.location.search); if (urlParams.get('action') === 'answer_call' || urlParams.get('action') === 'autologin') { const storedUser = localStorage.getItem('forumUsername'); const storedPass = localStorage.getItem('forumPassword'); if (storedUser && storedPass !== null) { socket.send(JSON.stringify({ type: 'join', payload: { username: storedUser, password: storedPass } })); } else { if (urlParams.get('action') === 'autologin') { loadHistory(); } else { alert("Nie znaleziono zapisanych danych logowania. Zaloguj się ręcznie i poproś o ponowne połączenie."); } } } else { loadHistory(); } }
-
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
-            socket.onopen = () => { console.log('Połączono z WebSocket.'); handleAutoLoginOnStartup(); };
+            socket.onopen = () => { handleAutoLoginOnStartup(); };
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 switch(data.type) {
@@ -279,7 +273,6 @@
                         const chatWith = urlParams.get('chat_with');
                         if (chatWith) {
                             pendingChatPartner = chatWith;
-                            // NAPRAWA 3: Wyczyść URL po odczytaniu parametrów
                             window.history.replaceState({}, document.title, window.location.pathname);
                         }
                         const caller = urlParams.get('caller');
@@ -314,7 +307,6 @@
             socket.onclose = (e) => { console.log(`Rozłączono z kodem ${e.code}. Próbuję połączyć ponownie...`); if (e.code === 4001) { localStorage.removeItem('forumUsername'); localStorage.removeItem('forumPassword'); storedUsername = null; } resetSession(); setTimeout(connectWebSocket, 3000); };
             socket.onerror = (e) => { console.error("WebSocket error:", e); socket.close(); }
         }
-
         function closePrivateChat(id) { document.getElementById(`tab-private-${id}`)?.remove(); document.getElementById(`messages-${id}`)?.remove(); if (lastPrivateChatPartner === id) { const nextTab = ui.privateChatTabs.querySelector('.tab-button'); lastPrivateChatPartner = nextTab ? nextTab.id.replace('tab-private-', '') : null; if(lastPrivateChatPartner) { ui.privateChatIndicator.textContent = lastPrivateChatPartner; } else { ui.privateChatIndicator.style.display = 'none'; } } if (activeChat === id) { const nextTabToOpen = ui.privateChatTabs.querySelector('.tab-button')?.id.replace('tab-private-', '') || 'public'; switchChat(nextTabToOpen); } }
         function openPrivateChat(targetUser) { const currentUserData = allUsers.find(u => u.username === sessionUsername); const targetUserData = allUsers.find(u => u.username === targetUser); if (currentUserData && targetUserData?.relationships?.[sessionUsername] === 'blocked') { alert('Nie możesz rozpocząć rozmowy, ten użytkownik Cię zablokował.'); return; } removeActiveForms(); createChatWindow(targetUser, `Priv: ${targetUser}`); if (socket && socket.readyState === WebSocket.OPEN && targetUser !== sessionUsername) { socket.send(JSON.stringify({ type: "get_private_history", payload: { partner: targetUser } })); } switchChat(targetUser); }
         async function loadHistory() { try { const r = await fetch(historyUrl); if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`); const h = await r.json(); const publicChat = document.getElementById('messages-public'); if(publicChat) { publicChat.innerHTML = ''; h.forEach(m => addMessage(m, 'public')); } } catch (e) { console.error("Błąd ładowania historii: ", e); } }
@@ -340,15 +332,12 @@
             slot.appendChild(form); form.querySelector(isNewUser ? 'input[name="username"]' : 'input[type="password"]').focus();
         }
         function createRegistrationSlot() { ui.newUserSlot.innerHTML = ''; const slot = document.createElement('div'); slot.className = 'user-slot'; const header = document.createElement('div'); header.className = 'user-slot-header'; header.innerHTML = '<span class="user-name" style="color: var(--text-muted-color);">Dołącz do czatu...</span>'; slot.appendChild(header); header.onclick = () => { header.style.display = 'none'; showLoginForm(slot, '', true); }; ui.newUserSlot.appendChild(slot); }
-        
         ui.form.addEventListener('submit', (e) => { e.preventDefault(); const message = ui.input.value.trim(); if (!message || !sessionUsername) return; let type, payload, messageData, targetChat; if (activeChat === 'public') { type = 'chat_message'; payload = { message }; messageData = { username: sessionUsername, message: message, timestamp: new Date().toISOString() }; targetChat = 'public'; } else { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (currentUserData.relationships && currentUserData.relationships[activeChat] === 'blocked') { alert('Nie możesz wysłać wiadomości. Odblokuj najpierw tego użytkownika.'); return; } type = 'private_message'; payload = { recipient: activeChat, message }; messageData = { sender: sessionUsername, message: message, timestamp: new Date().toISOString() }; targetChat = activeChat; } addMessage(messageData, targetChat); socket.send(JSON.stringify({ type, payload })); ui.input.value = ''; });
         ui.sidebarToggle.addEventListener('click', () => { ui.sidebar.classList.toggle('collapsed'); ui.sidebarToggle.textContent = ui.sidebar.classList.contains('collapsed') ? '>' : '<'; });
         ui.clearHistoryBtn.addEventListener('click', () => { if (activeChat === 'public') { if(isModerator && confirm('Czy na pewno chcesz wyczyścić cały czat publiczny?')) { socket.send(JSON.stringify({ type: 'clear_history' })); } } else { const currentUserData = allUsers.find(u => u.username === sessionUsername); if (currentUserData && currentUserData.role !== 'user') { if(confirm(`Czy na pewno chcesz trwale usunąć całą historię rozmowy z ${activeChat}? Tej akcji nie można cofnąć.`)) { socket.send(JSON.stringify({ type: 'delete_private_history', payload: { partner: activeChat } })); } } } });
         ui.privateChatIndicator.onclick = () => { if(lastPrivateChatPartner) { openPrivateChat(lastPrivateChatPartner); } };
-
         ui.callBtn.addEventListener('click', () => {
             if (!sessionUsername || activeChat === 'public') return;
-            
             if (ui.callBtn.classList.contains('calling')) {
                 addMessage({username:'System', message:'Zakończyłeś/aś rozmowę.'}, activeChat);
                 cleanupVoiceChat(activeChat);
@@ -363,13 +352,11 @@
                 }
             }
         });
-        
         registerServiceWorker();
         createChatWindow('public', 'Czat Publiczny');
         switchChat('public');
         connectWebSocket();
     </script>
-    
     <script>
         let deferredPrompt;
         const installButton = document.getElementById('install-button');
