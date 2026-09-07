@@ -71,6 +71,17 @@
         .file-link { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; text-decoration: none; color: var(--accent-color); transition: background 0.2s; }
         .file-link:hover { background-color: rgba(0,0,0,0.4); text-decoration: underline; }
 
+        /* Podświetlone linki w wiadomościach */
+        .chat-link {
+            color: #4ea1ff;
+            text-decoration: underline;
+            word-break: break-all;
+            transition: color 0.2s;
+        }
+        .chat-link:hover {
+            color: #7bb8ff;
+        }
+
         .tab-button { width: 100%; background: none; border: none; color: var(--text-muted-color); padding: 10px; text-align: left; cursor: pointer; border-radius: 5px; margin-bottom: 2px; font-size: clamp(0.8rem, 2.5vw, 0.9rem); transition: background-color 0.2s; white-space: nowrap; position: relative; display: flex; align-items: center; justify-content: space-between; }
         .private-chat-tabs .tab-button { width: auto; padding: 8px 12px; }
         .tab-button .tab-text { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; }
@@ -263,6 +274,28 @@
             updateClearHistoryButtonState();
             updateCallButtonVisibility();
         }
+        function linkify(text) {
+            if (!text) return "";
+            // Escapujemy HTML, żeby uniknąć XSS
+            const escaped = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+
+            // Wykrywamy URL-e (http, https, www)
+            const urlRegex = /(\b(https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]\}])/gi;
+
+            return escaped.replace(urlRegex, (url) => {
+                let href = url;
+                if (url.toLowerCase().startsWith("www.")) {
+                    href = "https://" + url;
+                }
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="chat-link">${url}</a>`;
+            });
+        }
+
         function addMessage(data, targetChatId) {
             const isPrivate = targetChatId !== 'public';
             const mDiv = document.getElementById(`messages-${targetChatId}`);
@@ -284,16 +317,17 @@
                 const fullUrl = data.url.startsWith('http') ? data.url : (apiBaseUrl + data.url);
 
                 if (type.startsWith('image/')) {
-                    messageContent += `<a href="${fullUrl}" target="_blank"><img src="${fullUrl}" alt="${filename}"></a>`;
+                    messageContent += `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer"><img src="${fullUrl}" alt="${filename}"></a>`;
                 } else if (type.startsWith('video/')) {
                     messageContent += `<video controls><source src="${fullUrl}" type="${type}">Twój router nie wspiera wideo.</video>`;
                 } else if (type.startsWith('audio/')) {
                     messageContent += `<audio controls><source src="${fullUrl}" type="${type}"></audio>`;
                 }
                 
-                messageContent += `<br><a href="${fullUrl}" target="_blank" class="file-link" download>📄 Pobierz: ${filename}</a></div>`;
+                messageContent += `<br><a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="file-link" download>📄 Pobierz: ${filename}</a></div>`;
             } else {
-                messageContent = data.message;
+                // Podświetlamy linki w zwykłych wiadomościach tekstowych
+                messageContent = linkify(data.message);
             }
 
             if (data.username === "System") {
