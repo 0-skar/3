@@ -276,24 +276,64 @@
         }
         function linkify(text) {
             if (!text) return "";
-            // Escapujemy HTML, żeby uniknąć XSS
-            const escaped = text
+
+            // 1. Escapujemy HTML, żeby uniknąć XSS
+            let result = text
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
 
-            // Wykrywamy URL-e (http, https, www)
+            // 2. Zamiana popularnych emotikon tekstowych na emoji
+            const emoticons = [
+                { regex: /&lt;3/g, emoji: "❤️" },
+                { regex: /&lt;\/3/g, emoji: "💔" },
+                { regex: /:\)/g, emoji: "🙂" },
+                { regex: /:\(/g, emoji: "🙁" },
+                { regex: /:D/gi, emoji: "😀" },
+                { regex: /;\)/g, emoji: "😉" },
+                { regex: /:P/gi, emoji: "😛" },
+                { regex: /:p/g, emoji: "😛" },
+                { regex: /:o/gi, emoji: "😮" },
+                { regex: /:O/g, emoji: "😮" },
+                { regex: /:\|/g, emoji: "😐" },
+                { regex: /:\'\(/g, emoji: "😢" },
+                { regex: /:\'\)/g, emoji: "😂" },
+                { regex: /xd/gi, emoji: "😆" },
+                { regex: /xD/g, emoji: "😆" },
+                { regex: /;P/gi, emoji: "😜" },
+                { regex: /:3/g, emoji: "😺" },
+                { regex: /&gt;:\(/g, emoji: "😠" },
+                { regex: /&gt;:\)/g, emoji: "😈" },
+                { regex: /:\*/g, emoji: "😘" },
+                { regex: /\^_\^/g, emoji: "😊" },
+                { regex: /-_-/g, emoji: "😑" },
+                { regex: /o_o/gi, emoji: "😳" },
+                { regex: /O_O/g, emoji: "😲" },
+                { regex: /\^o\^/g, emoji: "😄" },
+                { regex: /T_T/g, emoji: "😭" },
+                { regex: /;_;/g, emoji: "😭" },
+                { regex: /\(y\)/gi, emoji: "👍" },
+                { regex: /\(n\)/gi, emoji: "👎" },
+            ];
+
+            for (const { regex, emoji } of emoticons) {
+                result = result.replace(regex, emoji);
+            }
+
+            // 3. Wykrywamy URL-e i zamieniamy na klikalne linki
             const urlRegex = /(\b(https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]\}])/gi;
 
-            return escaped.replace(urlRegex, (url) => {
+            result = result.replace(urlRegex, (url) => {
                 let href = url;
                 if (url.toLowerCase().startsWith("www.")) {
                     href = "https://" + url;
                 }
                 return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="chat-link">${url}</a>`;
             });
+
+            return result;
         }
 
         function addMessage(data, targetChatId) {
@@ -326,7 +366,7 @@
                 
                 messageContent += `<br><a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="file-link" download>📄 Pobierz: ${filename}</a></div>`;
             } else {
-                // Podświetlamy linki w zwykłych wiadomościach tekstowych
+                // Podświetlamy linki + zamieniamy emotikony
                 messageContent = linkify(data.message);
             }
 
